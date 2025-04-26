@@ -37,7 +37,7 @@ sel_out_dev = None
 sel_in_dev  = None
 
 music_volume = 100
-mic_volume   = 100
+mic_volume   = 50        # default microphone volume
 loop_enabled = False
 
 # Hotkey modes
@@ -49,6 +49,7 @@ script_dir  = os.path.dirname(os.path.abspath(__file__))
 music_dir   = os.path.join(script_dir, 'music')
 youtube_dir = os.path.join(script_dir, 'youtube')
 
+# Create required directories if they do not exist
 os.makedirs(music_dir,   exist_ok=True)
 os.makedirs(youtube_dir, exist_ok=True)
 
@@ -56,7 +57,6 @@ os.makedirs(youtube_dir, exist_ok=True)
 def debug(msg):
     if DEBUG:
         print(f"[DEBUG] {msg}")
-
 
 # —— channel conversions & volume —— #
 def mono_to_stereo(data):
@@ -94,7 +94,6 @@ def adjust_volume(data, vol_percent):
         arr[i] = max(-32768, min(32767, v))
     return arr.tobytes()
 
-
 # —— helper states —— #
 def is_music_playing():
     return playback_thread and playback_thread.is_alive() and not pause_music_flag.is_set()
@@ -107,7 +106,6 @@ def toggle_mute():
         pre_mute_volume = music_volume
         music_volume = 0
     debug(f"Toggled mute: music_volume={music_volume}")
-
 
 # —— hotkey callbacks —— #
 def hotkey_toggle():
@@ -148,7 +146,6 @@ def setup_hotkeys():
     keyboard.on_press_key('p', on_p_press)
     keyboard.on_release_key('p', on_p_release)
 
-
 # —— mic PTT (push-to-talk) —— #
 def ptt_down():
     debug("PTT down → switch_to_mic()")
@@ -159,10 +156,8 @@ def ptt_up():
     stop_mic()
 
 def setup_ptt():
-    # Mouse4 down/up ⇒ MIC PTT enabled by default
     mouse.on_button(ptt_down, buttons=['x'], types=['down'])
     mouse.on_button(ptt_up,   buttons=['x'], types=['up'])
-
 
 # —— device selection —— #
 def list_audio_devices():
@@ -205,7 +200,6 @@ def select_input_device(devs):
             pass
         print("Invalid selection.")
 
-
 # —— music library —— #
 def list_music_files():
     global music_entries
@@ -220,7 +214,6 @@ def list_music_files():
     else:
         for i, (name, _) in enumerate(music_entries, 1):
             print(f" {i:2d}. {name}")
-
 
 # —— playback control —— #
 def _stop_music_internal():
@@ -258,7 +251,6 @@ def _playback(path):
     out_ch   = out_info['maxOutputChannels']
     ext      = os.path.splitext(path)[1].lower()
 
-    # get native rate
     if ext == '.wav':
         wf = wave.open(path, 'rb')
         in_ch   = wf.getnchannels()
@@ -279,7 +271,6 @@ def _playback(path):
         cleanup = lambda: (proc.stdout.close(), proc.wait())
 
     rate = native_rate
-    # attempt to open at native rate, fallback to 48000
     try:
         stream = p.open(
             format=FORMAT,
@@ -303,7 +294,6 @@ def _playback(path):
 
     stop_music_flag.clear()
     pause_music_flag.clear()
-
     data = reader(MUSIC_CHUNK)
     while data and not stop_music_flag.is_set():
         if pause_music_flag.is_set():
@@ -320,6 +310,7 @@ def _playback(path):
     cleanup()
     current_ffmpeg_proc = None
 
+# —— utility functions —— #
 def get_duration(path):
     try:
         if path.lower().endswith('.wav'):
@@ -344,10 +335,7 @@ def play_music_from_file(idx):
     if dur is not None:
         debug(f"Track duration: {dur:.2f}s")
     _stop_music_internal()
-    playback_thread = threading.Thread(
-        target=lambda: _playback(path),
-        daemon=True
-    )
+    playback_thread = threading.Thread(target=lambda: _playback(path), daemon=True)
     playback_thread.start()
     debug("Playback thread started")
 
@@ -372,11 +360,9 @@ def play_youtube_url(url):
         print("Downloaded not found.")
     threading.Thread(target=_dl_play, daemon=True).start()
 
-
 # —— mic passthrough —— #
 def switch_to_mic():
     global mic_thread
-    debug("switch_to_mic()")
     if mic_thread and mic_thread.is_alive():
         return
     def _mic_loop():
@@ -397,36 +383,35 @@ def switch_to_mic():
     mic_thread.start()
 
 def stop_mic():
-    debug("stop_mic()")
     if mic_thread and mic_thread.is_alive():
         stop_mic_flag.set()
         mic_thread.join(timeout=1)
 
-
 # —— CLI helpers —— #
 def show_menu():
-    print(f"\nMusic vol={music_volume}%  Loop={'On' if loop_enabled else 'Off'}  Mode={type_mode}+{action_mode}")
+    print(f"\nMusic vol={music_volume}%  Mic vol={mic_volume}%  Loop={'On' if loop_enabled else 'Off'}  Mode={type_mode}+{action_mode}")
     print("""
-Commands:  
-  DIR           – list library  
-  PLAY          – play random  
-  PLAY <N>      – play entry N  
-  PLAY <URL>    – play YouTube URL  
-  PAUSE         – pause music  
-  RESUME        – resume music  
-  STOP          – stop music  
-  MUSIC VOL <n> – set music vol  
-  MIC ON        – mic passthrough on  
-  MIC OFF       – mic passthrough off  
-  MIC PTT       – hold Mouse4 for mic passthrough  
-  LOOP ON       – enable loop  
-  LOOP OFF      – disable loop  
-  MODE TOGGLE   – hotkey toggle mode  
-  MODE HOLD     – hotkey hold mode  
-  MODE PLAYPAUSE– hotkey play/pause  
-  MODE MUTE     – hotkey mute  
-  MENU          – show this menu  
-  QUIT          – exit  
+Commands:
+  DIR             – list library
+  PLAY            – play random
+  PLAY <N>        – play entry N
+  PLAY <URL>      – play YouTube URL
+  PAUSE           – pause music
+  RESUME          – resume music
+  STOP            – stop music
+  MUSIC VOL <n>   – set music vol
+  MIC VOL <n>     – set mic vol (1–100)
+  MIC ON          – mic passthrough on
+  MIC OFF         – mic passthrough off
+  MIC PTT         – hold Mouse4 for mic passthrough
+  LOOP ON         – enable loop
+  LOOP OFF        – disable loop
+  MODE TOGGLE     – hotkey toggle mode
+  MODE HOLD       – hotkey hold mode
+  MODE PLAYPAUSE  – hotkey play/pause
+  MODE MUTE       – hotkey mute
+  MENU            – show this menu
+  QUIT            – exit
 """)
 
 def interactive_mode():
@@ -467,9 +452,20 @@ def interactive_mode():
                     print(f"Music vol={v}%")
                     debug(f"Set music_volume to {v}")
                 else:
-                    raise
+                    raise ValueError
             except:
                 print("Usage: MUSIC VOL <1–100>")
+        elif low.startswith("mic vol "):
+            try:
+                v = int(low.split()[2])
+                if 1 <= v <= 100:
+                    mic_volume = v
+                    print(f"Mic vol={v}%")
+                    debug(f"Set mic_volume to {v}")
+                else:
+                    raise ValueError
+            except:
+                print("Usage: MIC VOL <1–100>")
         elif low == "mic on":
             switch_to_mic()
         elif low == "mic off":
@@ -480,14 +476,14 @@ def interactive_mode():
             loop_enabled = True; print("Loop enabled"); debug("Loop enabled")
         elif low == "loop off":
             loop_enabled = False; print("Loop disabled"); debug("Loop disabled")
-        elif low == "mode toggle":
-            type_mode = 'toggle'; print("Hotkey mode: toggle"); debug("type_mode=toggle")
-        elif low == "mode hold":
-            type_mode = 'hold'; print("Hotkey mode: hold"); debug("type_mode=hold")
-        elif low == "mode playpause":
-            action_mode = 'playpause'; print("Hotkey action: play/pause"); debug("action_mode=playpause")
-        elif low == "mode mute":
-            action_mode = 'mute'; print("Hotkey action: mute"); debug("action_mode=mute")
+        elif low.startswith("mode "):
+            m = low.split()[1]
+            if m in ['toggle','hold']:
+                type_mode = m; print(f"Hotkey mode: {m}"); debug(f"type_mode={m}")
+            elif m in ['playpause','mute']:
+                action_mode = m; print(f"Hotkey action: {m}"); debug(f"action_mode={m}")
+            else:
+                print("Usage: MODE TOGGLE|HOLD|PLAYPAUSE|MUTE")
         elif low == "menu":
             show_menu()
         elif low == "quit":
@@ -497,13 +493,12 @@ def interactive_mode():
         else:
             print("Unknown command.")
 
+# —— entry point —— #
 def main():
     devs = list_audio_devices()
-    global sel_out_dev
     # auto-select VB-Cable Input if present
     for i, info in enumerate(devs):
-        if (info['name'] == 'CABLE Input (VB-Audio Virtual Cable)'
-                and info['maxOutputChannels'] == 2):
+        if (info['name'] == 'CABLE Input (VB-Audio Virtual Cable)' and info['maxOutputChannels'] == 2):
             sel_out_dev = i
             print(f"Automatically selected OUTPUT: {info['name']}")
             break
