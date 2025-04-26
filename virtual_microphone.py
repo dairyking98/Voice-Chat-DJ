@@ -14,7 +14,7 @@ import mouse         # pip install mouse
 
 # ——— CONFIG ———
 MIC_RATE      = 48000    # 48 kHz for mic passthrough
-MIC_CHANNELS  = 1        # capture mic as mono
+MIC_CHANNELS  = 1         # capture mic as mono
 MIC_CHUNK     = 1024
 MUSIC_CHUNK   = 1024
 FORMAT        = pyaudio.paInt16
@@ -33,14 +33,19 @@ stop_music_flag     = threading.Event()
 pause_music_flag    = threading.Event()
 stop_mic_flag       = threading.Event()
 
-sel_out_dev = None
-sel_in_dev  = None
+sel_out_dev    = None
+sel_in_dev     = None
+
+# —— NEW "LISTEN" STATE ——
+listen_enabled = False    # whether listen is enabled
+sel_listen_dev = None     # device index for listening output
+listen_volume  = 100      # listen volume percent
+# ——————————————————
 
 music_volume = 100
-mic_volume   = 50        # default microphone volume
+mic_volume   = 50         # default microphone volume
 loop_enabled = False
 
-# Hotkey modes
 type_mode           = 'toggle'    # 'toggle' or 'hold'
 action_mode         = 'playpause' # 'playpause' or 'mute'
 original_play_state = False
@@ -57,6 +62,7 @@ os.makedirs(youtube_dir, exist_ok=True)
 def debug(msg):
     if DEBUG:
         print(f"[DEBUG] {msg}")
+
 
 # —— channel conversions & volume —— #
 def mono_to_stereo(data):
@@ -94,6 +100,7 @@ def adjust_volume(data, vol_percent):
         arr[i] = max(-32768, min(32767, v))
     return arr.tobytes()
 
+
 # —— helper states —— #
 def is_music_playing():
     return playback_thread and playback_thread.is_alive() and not pause_music_flag.is_set()
@@ -106,6 +113,7 @@ def toggle_mute():
         pre_mute_volume = music_volume
         music_volume = 0
     debug(f"Toggled mute: music_volume={music_volume}")
+
 
 # —— hotkey callbacks —— #
 def hotkey_toggle():
@@ -146,7 +154,8 @@ def setup_hotkeys():
     keyboard.on_press_key('p', on_p_press)
     keyboard.on_release_key('p', on_p_release)
 
-# —— mic PTT (push-to-talk) —— #
+
+# —— mic PTT —— #
 def ptt_down():
     debug("PTT down → switch_to_mic()")
     switch_to_mic()
@@ -158,6 +167,7 @@ def ptt_up():
 def setup_ptt():
     mouse.on_button(ptt_down, buttons=['x'], types=['down'])
     mouse.on_button(ptt_up,   buttons=['x'], types=['up'])
+
 
 # —— device selection —— #
 def list_audio_devices():
@@ -171,15 +181,22 @@ def list_audio_devices():
 
 def select_output_device(devs):
     global sel_out_dev
+    # only list pure output devices (no input capability)
+    valid = [
+        (i, info) for i, info in enumerate(devs)
+        if info['maxOutputChannels'] > 0 and info['maxInputChannels'] == 0
+    ]
     print("\nSelect OUTPUT device (virtual mic):")
+    for i, info in valid:
+        print(f" {i}: {info['name']}  OutCh={info['maxOutputChannels']}")
     while True:
         try:
-            i = int(input("OUTPUT # → "))
-            if 0 <= i < len(devs) and devs[i]['maxOutputChannels'] > 0:
-                sel_out_dev = i
-                print("→ Using output:", devs[i]['name'])
+            choice = int(input("OUTPUT # → "))
+            if any(choice == idx for idx, _ in valid):
+                sel_out_dev = choice
+                print("→ Using output:", devs[choice]['name'])
                 return
-        except:
+        except ValueError:
             pass
         print("Invalid selection.")
 
@@ -191,14 +208,36 @@ def select_input_device(devs):
             print(f" {i}: {info['name']}  InCh={info['maxInputChannels']}")
     while True:
         try:
-            i = int(input("INPUT # → "))
-            if 0 <= i < len(devs) and devs[i]['maxInputChannels'] > 0:
-                sel_in_dev = i
-                print("→ Using input:", devs[i]['name'])
+            choice = int(input("INPUT # → "))
+            if 0 <= choice < len(devs) and devs[choice]['maxInputChannels'] > 0:
+                sel_in_dev = choice
+                print("→ Using input:", devs[choice]['name'])
                 return
-        except:
+        except ValueError:
             pass
         print("Invalid selection.")
+
+def select_listen_device(devs):
+    global sel_listen_dev
+    # only list pure output devices (no input capability)
+    valid = [
+        (i, info) for i, info in enumerate(devs)
+        if info['maxOutputChannels'] > 0 and info['maxInputChannels'] == 0
+    ]
+    print("\nSelect LISTEN OUTPUT device (speaker):")
+    for i, info in valid:
+        print(f" {i}: {info['name']}  OutCh={info['maxOutputChannels']}")
+    while True:
+        try:
+            choice = int(input("LISTEN OUTPUT # → "))
+            if any(choice == idx for idx, _ in valid):
+                sel_listen_dev = choice
+                print("→ Using listen output:", devs[choice]['name'])
+                return
+        except ValueError:
+            pass
+        print("Invalid selection.")
+
 
 # —— music library —— #
 def list_music_files():
@@ -212,8 +251,9 @@ def list_music_files():
     if not music_entries:
         print("  (no .wav/.mp3 files)")
     else:
-        for i, (name, _) in enumerate(music_entries, 1):
-            print(f" {i:2d}. {name}")
+        for idx, (name, _) in enumerate(music_entries, 1):
+            print(f" {idx:2d}. {name}")
+
 
 # —— playback control —— #
 def _stop_music_internal():
@@ -222,7 +262,7 @@ def _stop_music_internal():
     if current_ffmpeg_proc:
         try:
             current_ffmpeg_proc.kill()
-        except:
+        except Exception:
             pass
         current_ffmpeg_proc.wait()
         current_ffmpeg_proc = None
@@ -245,6 +285,8 @@ def resume_music():
     pause_music_flag.clear()
     print("Music resumed.")
 
+
+# —— playback with listen support —— #
 def _playback(path):
     global current_ffmpeg_proc
     out_info = p.get_device_info_by_index(sel_out_dev)
@@ -253,12 +295,12 @@ def _playback(path):
 
     if ext == '.wav':
         wf = wave.open(path, 'rb')
-        in_ch   = wf.getnchannels()
-        native_rate = wf.getframerate()
-        reader  = lambda n: wf.readframes(n)
-        cleanup = wf.close
+        in_ch        = wf.getnchannels()
+        native_rate  = wf.getframerate()
+        reader       = lambda n: wf.readframes(n)
+        cleanup      = wf.close
     else:
-        native_rate = int(out_info['defaultSampleRate'])
+        native_rate  = int(out_info['defaultSampleRate'])
         cmd = [
             'ffmpeg', '-hide_banner', '-loglevel', 'error', '-i', path,
             '-f', 's16le', '-acodec', 'pcm_s16le',
@@ -266,9 +308,9 @@ def _playback(path):
         ]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         current_ffmpeg_proc = proc
-        in_ch   = out_ch
-        reader  = lambda n: proc.stdout.read(n * out_ch * 2)
-        cleanup = lambda: (proc.stdout.close(), proc.wait())
+        in_ch        = out_ch
+        reader       = lambda n: proc.stdout.read(n * out_ch * 2)
+        cleanup      = lambda: (proc.stdout.close(), proc.wait())
 
     rate = native_rate
     try:
@@ -292,6 +334,21 @@ def _playback(path):
             frames_per_buffer=MUSIC_CHUNK
         )
 
+    # open listen stream if enabled
+    listen_stream = None
+    if listen_enabled and sel_listen_dev is not None:
+        try:
+            listen_stream = p.open(
+                format=FORMAT,
+                channels=out_ch,
+                rate=rate,
+                output=True,
+                output_device_index=sel_listen_dev,
+                frames_per_buffer=MUSIC_CHUNK
+            )
+        except Exception:
+            debug(f"Could not open listen device at index {sel_listen_dev}")
+
     stop_music_flag.clear()
     pause_music_flag.clear()
     data = reader(MUSIC_CHUNK)
@@ -301,14 +358,19 @@ def _playback(path):
             data = reader(MUSIC_CHUNK)
             continue
         chunk = convert_channels(data, in_ch, out_ch)
-        chunk = adjust_volume(chunk, music_volume)
-        stream.write(chunk)
+        stream.write(adjust_volume(chunk, music_volume))
+        if listen_stream:
+            listen_stream.write(adjust_volume(chunk, listen_volume))
         data = reader(MUSIC_CHUNK)
 
     stream.stop_stream()
     stream.close()
+    if listen_stream:
+        listen_stream.stop_stream()
+        listen_stream.close()
     cleanup()
     current_ffmpeg_proc = None
+
 
 # —— utility functions —— #
 def get_duration(path):
@@ -321,7 +383,7 @@ def get_duration(path):
             '-of','default=noprint_wrappers=1:nokey=1', path
         ], stderr=subprocess.DEVNULL).decode().strip()
         return float(out)
-    except:
+    except Exception:
         return None
 
 def play_music_from_file(idx):
@@ -344,23 +406,24 @@ def play_youtube_url(url):
     def _dl_play():
         _stop_music_internal()
         opts = {
-            'format':'bestaudio/best',
-            'outtmpl':os.path.join(youtube_dir,'%(title)s.%(ext)s'),
-            'quiet':True,
-            'postprocessors':[{'key':'FFmpegExtractAudio','preferredcodec':'wav','preferredquality':'192'}]
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(youtube_dir,'%(title)s.%(ext)s'),
+            'quiet': True,
+            'postprocessors': [
+                {'key':'FFmpegExtractAudio','preferredcodec':'wav','preferredquality':'192'}
+            ]
         }
         with youtube_dl.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
         name = info.get('title') + '.wav'
         list_music_files()
-        for i, (n, _) in enumerate(music_entries):
+        for i,(n,_) in enumerate(music_entries):
             if n == name:
                 play_music_from_file(i)
                 return
         print("Downloaded not found.")
     threading.Thread(target=_dl_play, daemon=True).start()
 
-# —— mic passthrough —— #
 def switch_to_mic():
     global mic_thread
     if mic_thread and mic_thread.is_alive():
@@ -368,8 +431,8 @@ def switch_to_mic():
     def _mic_loop():
         stop_mic_flag.clear()
         out_ch = p.get_device_info_by_index(sel_out_dev)['maxOutputChannels']
-        in_s  = p.open(format=FORMAT, channels=MIC_CHANNELS, rate=MIC_RATE,
-                       input=True, input_device_index=sel_in_dev, frames_per_buffer=MIC_CHUNK)
+        in_s = p.open(format=FORMAT, channels=MIC_CHANNELS, rate=MIC_RATE,
+                      input=True, input_device_index=sel_in_dev, frames_per_buffer=MIC_CHUNK)
         out_s = p.open(format=FORMAT, channels=out_ch, rate=MIC_RATE,
                        output=True, output_device_index=sel_out_dev, frames_per_buffer=MIC_CHUNK)
         while not stop_mic_flag.is_set():
@@ -387,9 +450,18 @@ def stop_mic():
         stop_mic_flag.set()
         mic_thread.join(timeout=1)
 
-# —— CLI helpers —— #
+def ptt_down():
+    debug("PTT down → switch_to_mic()")
+    switch_to_mic()
+
+def ptt_up():
+    debug("PTT up → stop_mic()")
+    stop_mic()
+
 def show_menu():
-    print(f"\nMusic vol={music_volume}%  Mic vol={mic_volume}%  Loop={'On' if loop_enabled else 'Off'}  Mode={type_mode}+{action_mode}")
+    print(f"\nMusic vol={music_volume}%  Mic vol={mic_volume}%  Listen vol={listen_volume}%  "
+          f"Loop={'On' if loop_enabled else 'Off'}  Mode={type_mode}+{action_mode}  "
+          f"Listen={'On' if listen_enabled else 'Off'}")
     print("""
 Commands:
   DIR             – list library
@@ -401,9 +473,12 @@ Commands:
   STOP            – stop music
   MUSIC VOL <n>   – set music vol
   MIC VOL <n>     – set mic vol (1–100)
+  LISTEN VOL <n>  – set listen vol (1–100)
   MIC ON          – mic passthrough on
   MIC OFF         – mic passthrough off
   MIC PTT         – hold Mouse4 for mic passthrough
+  LISTEN ON       – enable listen output
+  LISTEN OFF      – disable listen output
   LOOP ON         – enable loop
   LOOP OFF        – disable loop
   MODE TOGGLE     – hotkey toggle mode
@@ -419,7 +494,7 @@ def interactive_mode():
     setup_ptt()
     list_music_files()
     show_menu()
-    global music_volume, mic_volume, loop_enabled, type_mode, action_mode
+    global music_volume, mic_volume, loop_enabled, type_mode, action_mode, listen_enabled, listen_volume
 
     while True:
         cmd = input("> ").strip()
@@ -466,12 +541,31 @@ def interactive_mode():
                     raise ValueError
             except:
                 print("Usage: MIC VOL <1–100>")
+        elif low.startswith("listen vol "):
+            try:
+                v = int(low.split()[2])
+                if 1 <= v <= 100:
+                    listen_volume = v
+                    print(f"Listen vol={v}%")
+                    debug(f"Set listen_volume to {v}")
+                else:
+                    raise ValueError
+            except:
+                print("Usage: LISTEN VOL <1–100>")
         elif low == "mic on":
             switch_to_mic()
         elif low == "mic off":
             stop_mic()
         elif low == "mic ptt":
             print("Hold Mouse4 to speak")
+        elif low == "listen on":
+            devs = list_audio_devices()
+            select_listen_device(devs)
+            listen_enabled = True
+            print("Listen enabled")
+        elif low == "listen off":
+            listen_enabled = False
+            print("Listen disabled")
         elif low == "loop on":
             loop_enabled = True; print("Loop enabled"); debug("Loop enabled")
         elif low == "loop off":
@@ -493,7 +587,6 @@ def interactive_mode():
         else:
             print("Unknown command.")
 
-# —— entry point —— #
 def main():
     global sel_out_dev
     devs = list_audio_devices()
