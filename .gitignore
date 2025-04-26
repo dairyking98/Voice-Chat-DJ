@@ -1,0 +1,7 @@
+# Ignore everything in these dirs
+/music/*
+/youtube/*
+
+# But allow the placeholder files so Git will keep the directories
+!/music/.gitkeep
+!/youtube/.gitkeep
