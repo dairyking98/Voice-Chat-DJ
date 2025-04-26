@@ -495,15 +495,18 @@ def interactive_mode():
 
 # —— entry point —— #
 def main():
+    global sel_out_dev
     devs = list_audio_devices()
     # auto-select VB-Cable Input if present
     for i, info in enumerate(devs):
-        if (info['name'] == 'CABLE Input (VB-Audio Virtual Cable)' and info['maxOutputChannels'] == 2):
+        if (info['name'] == 'CABLE Input (VB-Audio Virtual Cable)'
+                and info['maxOutputChannels'] == 2):
             sel_out_dev = i
             print(f"Automatically selected OUTPUT: {info['name']}")
             break
     else:
         select_output_device(devs)
+
     select_input_device(devs)
     interactive_mode()
     p.terminate()
