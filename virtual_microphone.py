@@ -127,20 +127,17 @@ def resample_wav(src_path: str, dst_path: str, target_rate: int = 48000):
     ], check=True)
 
 def flush_ctrl_keys():
-    # first, tell python-keyboard to release anything it thinks is down
-    try:
-        keyboard.release_all()
-    except:
-        for k in FLUSH_KEYS:
-            try: keyboard.release(k)
-            except: pass
+    # Release all keys in FLUSH_KEYS via keyboard library
+    for k in FLUSH_KEYS:
+        try:
+            keyboard.release(k)
+        except:
+            pass
 
-    # then, for each Ctrl key code, simulate a tap (down+up)
-    for vk in (VK_CONTROL, VK_LCONTROL, VK_RCONTROL):
-        # press
-        ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
-        # release
+    # Simulate key-up for Ctrl and Tab via Win32 API
+    for vk in (VK_CONTROL, VK_LCONTROL, VK_RCONTROL, VK_TAB):
         ctypes.windll.user32.keybd_event(vk, 0, KEYEVENTF_KEYUP, 0)
+        time.sleep(0.01)  # Small delay to ensure OS processes the event
 
 def play_audio_file(path):
     """
@@ -824,121 +821,96 @@ def play_tts(text):
     threading.Thread(target=lambda: _play_tts_file(out), daemon=True).start()
 
 
-def show_music_list_popup():
-    global music_popup_open
-    if music_popup_open:
+def show_tts_capture_popup():
+    global tts_capture_buffer, tts_capture_mode
+    if tts_capture_mode:  # Prevent multiple popups
         return
-    music_popup_open = True
-    list_music_files()
+    print("SHOW TTS CAPTURE POPUP")
+    tts_capture_buffer = ""
+    tts_capture_mode = True
 
-    def _popup():
-        global music_popup_open
+    root = tk.Tk()
+    root.overrideredirect(True)
+    root.attributes("-topmost", True)
 
-        # Create the popup window
-        root = tk.Tk()
-        root.title("Select Track")
-        root.attributes("-topmost", True)
-        root.withdraw()
+    popup_font = tkfont.Font(root=root, family="Segoe UI", size=14, weight="bold")
+    pad_x, pad_y = 20, 20
 
-        # Center & size
-        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-        W, H   = 500, 400
-        x, y   = (sw - W)//2, (sh - H)//2
-        root.geometry(f"{W}x{H}+{x}+{y}")
-        root.deiconify()
+    label = tk.Label(
+        root,
+        text="Type: ",
+        font=popup_font,
+        bg="blue", fg="white",
+        padx=pad_x, pady=pad_y
+    )
+    label.pack()
 
-        # ALT‐handshake to steal focus on Windows
+    def resize_window(text):
+        width = popup_font.measure(text) + pad_x * 2
+        height = popup_font.metrics("linespace") + pad_y * 2
+        sw = root.winfo_screenwidth()
+        x = (sw - width) // 2
+        root.geometry(f"{width}x{height}+{x}+0")
+
+    def close_popup():
+        global tts_capture_buffer, tts_capture_mode
+        tts_capture_mode = False
         try:
-            u    = ctypes.windll.user32
-            hwnd = root.winfo_id()
-            u.AllowSetForegroundWindow(-1)
-            u.keybd_event(VK_MENU, 0, 0, 0)
-            u.SetForegroundWindow(hwnd)
-            u.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+            root.grab_release()
         except:
             pass
+        root.destroy()
+        flush_ctrl_keys()  # Ensure no stuck keys
 
-        # Pre‐hook flush (like Ctrl+Tab menu)
-        flush_ctrl_keys()
+    def on_key(event):
+        global tts_capture_buffer, tts_capture_mode
+        key = event.keysym
 
-        # Build scrollable button list
-        frame = tk.Frame(root); frame.pack(fill="both", expand=True, padx=10, pady=(10,0))
-        sb    = tk.Scrollbar(frame); sb.pack(side="right", fill="y")
-        cnv   = tk.Canvas(frame, yscrollcommand=sb.set)
-        cnv.pack(side="left", fill="both", expand=True)
-        sb.config(command=cnv.yview)
-        btn_frame = tk.Frame(cnv)
-        cnv.create_window((0,0), window=btn_frame, anchor="nw")
-        for i, (name, _) in enumerate(music_entries, 1):
-            btn = tk.Button(btn_frame, text=f"{i:2d}. {name}",
-                            anchor="w",
-                            command=lambda i=i-1: (play_music_from_file(i), close_popup()))
-            btn.pack(fill="x", pady=1)
-        btn_frame.update_idletasks()
-        cnv.config(scrollregion=cnv.bbox("all"))
+        if key in ('Return', 'KP_Enter'):
+            text = tts_capture_buffer.strip()
+            close_popup()
+            if text:
+                play_tts(text)
+            return
 
-        # Live “Type #:” label
-        buffer_label = tk.Label(root, text="Type #: ", font=("Segoe UI",14))
-        buffer_label.pack(fill="x", pady=(5,10))
+        if key == 'Escape':  # Allow Esc to cancel
+            close_popup()
+            return
 
-        capture_buffer = []
+        if key == 'BackSpace':
+            tts_capture_buffer = tts_capture_buffer[:-1]
+        elif key == 'space':
+            tts_capture_buffer += ' '
+        elif event.char and len(event.char) == 1:
+            tts_capture_buffer += event.char
 
-        def close_popup():
-            nonlocal capture_buffer
-            global music_popup_open
-            music_popup_open = False
-            # unbind our key handler
-            root.unbind_all("<Key>")
-            try: root.grab_release()
-            except: pass
-            root.destroy()
-            # post‐popup flush
-            flush_ctrl_keys()
+        display = "Type: " + tts_capture_buffer
+        label.config(text=display)
+        root.update_idletasks()
+        resize_window(display)
 
-        # Local key handler via bind_all
-        def on_key(event):
-            name = event.keysym.lower()
+    def check_focus():
+        # If the window loses focus (e.g., CS:GO minimized), close the popup
+        if not root.winfo_exists() or not root.focus_get():
+            close_popup()
+        else:
+            root.after(100, check_focus)  # Check every 100ms
 
-            # Enter → play & close
-            if name in ('return','enter'):
-                sel = ''.join(capture_buffer)
-                if sel.isdigit():
-                    idx = int(sel) - 1
-                    if 0 <= idx < len(music_entries):
-                        play_music_from_file(idx)
-                close_popup()
-                return "break"
+    # Initial setup
+    resize_window("Type: ")
+    root.bind("<Key>", on_key)
+    root.grab_set()
+    root.focus_force()
 
-            # Esc → cancel
-            if name in ('esc','escape'):
-                close_popup()
-                return "break"
+    # Start focus monitoring
+    root.after(100, check_focus)
 
-            # Backspace
-            if name == 'backspace':
-                if capture_buffer:
-                    capture_buffer.pop()
-                buffer_label.config(text="Type #: " + ''.join(capture_buffer))
-                return "break"
+    # Ensure cleanup on window close
+    root.protocol("WM_DELETE_WINDOW", close_popup)
+    root.mainloop()
 
-            # Digit
-            if len(name) == 1 and name.isdigit():
-                capture_buffer.append(name)
-                buffer_label.config(text="Type #: " + ''.join(capture_buffer))
-                return "break"
 
-            # Let all other keys through (including Ctrl‐up)
-            return None
-
-        # Bind to all key events on this window
-        root.bind_all("<Key>", on_key)
-
-        # Make it modal & focused
-        root.grab_set()
-        root.focus_force()
-        root.mainloop()
-
-    threading.Thread(target=_popup, daemon=True).start()
+    # threading.Thread(target=_popup, daemon=True).start()
 
 
 ### MENU & CLI ###
@@ -1112,16 +1084,19 @@ def interactive_mode():
 
 
 def on_tab_press(event):
-    # only fire when Ctrl is held
     if keyboard.is_pressed('ctrl'):
-        show_tts_capture_popup()
+        # Flush any stray Ctrl/Tab state
+        flush_ctrl_keys()
+        # Only show popup if not already in capture mode
+        if not tts_capture_mode:
+            show_tts_capture_popup()
 
 
 def main():
     global sel_out_dev
     devs = list_audio_devices()
     for i, info in enumerate(devs):
-        if info['name']=='CABLE Input (VB-Audio Virtual Cable)' and info['maxOutputChannels']==2:
+        if info['name'] == 'CABLE Input (VB-Audio Virtual Cable)' and info['maxOutputChannels'] == 2:
             sel_out_dev = i
             print(f"Auto OUTPUT: {info['name']}")
             break
@@ -1131,38 +1106,25 @@ def main():
     select_input_device(devs)
 
     mouse.hook(on_scroll)
-    #keyboard.on_press_key('tab',    lambda e: show_tts_capture_popup()   if keyboard.is_pressed('ctrl') else None, suppress=False)
-    keyboard.on_press_key('i',      lambda e: show_music_list_popup()    if keyboard.is_pressed('ctrl') else None, suppress=False)
-    
-    def on_tab_press(event):
-        if keyboard.is_pressed('ctrl'):
-            # flush any stray Ctrl/Tab state first:
-            for k in FLUSH_KEYS:
-                try: keyboard.release(k)
-                except: pass
-
-            show_tts_capture_popup()
-
-    # register only this:
     keyboard.on_press_key('tab', on_tab_press, suppress=False)
-    
-    # keyboard.on_press_key('tab', on_tab_press, suppress=False)
-    
+    keyboard.on_press_key('i', lambda e: show_music_list_popup() if keyboard.is_pressed('ctrl') else None, suppress=False)
+
     load_binds()
     for d in "1234567890":
         keyboard.add_hotkey(f"ctrl+{d}", lambda x=d: play_bind_digit(x), suppress=False)
 
-    # keyboard.on_press_key('i', lambda e: show_music_list_popup() if keyboard.is_pressed('ctrl') else None, suppress=False)
-    #keyboard.add_hotkey('ctrl+i', show_music_list_popup, suppress=False)
-    # fire the popup whenever you press 'i' while holding Ctrl
-    keyboard.on_press_key(
-        'i',
-        lambda e: show_music_list_popup() if keyboard.is_pressed('ctrl') else None,
-        suppress=False
-    )
-
-    interactive_mode()
-    p.terminate()
+    try:
+        interactive_mode()
+    finally:
+        # Cleanup on exit
+        stop_music()
+        stop_mic()
+        flush_ctrl_keys()
+        try:
+            tk.Tk().quit()  # Force Tkinter to clean up any lingering windows
+        except:
+            pass
+        p.terminate()
 
 
 if __name__ == "__main__":
