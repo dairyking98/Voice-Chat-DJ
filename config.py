@@ -15,7 +15,7 @@ DEBUG = True
 
 # ——— DEVICE IDENTIFIER ———
 # We pick the recording side of the cable, which exposes 2 input channels.
-VIRTUAL_CABLE_RECORD_NAME = 'CABLE Output (VB-Audio Virtual Cable)'
+VIRTUAL_CABLE_RECORD_NAME = 'VB-Audio Virtual Cable'
 
 # ——— PATHS ———
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))

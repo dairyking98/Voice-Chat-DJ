@@ -16,12 +16,14 @@ from tkinter import font as tkfont
 import ctypes
 
 # Custom classes
+from scripts.playback import Playback
+from scripts.gui import MainWindow
+from scripts.utils import getTime
+
 from config import (
     VIRTUAL_CABLE_RECORD_NAME,
     MUSIC_DIR, YOUTUBE_DIR, BINDS_DIR, DEBUG
 )
-from scripts.gui import MainWindow
-from scripts.utils import getTime
 
 
 class Controller:
@@ -41,16 +43,19 @@ class Controller:
 
         self.input_device = None
 
+        print(len(devs), "devices found:")
+
         # Route all audio into the cable's record endpoint
         self.output_device = next(
             (i for i, info in enumerate(devs)
              if VIRTUAL_CABLE_RECORD_NAME in info['name']
-             and info['maxInputChannels'] == 2),
+             and info['maxOutputChannels'] == 2),
             None
         )
+        
         if self.output_device is None:
             raise RuntimeError(
-                f"Could not find '{VIRTUAL_CABLE_RECORD_NAME}' with 2 input channels"
+                f"Could not find '{VIRTUAL_CABLE_RECORD_NAME}' with 2 output channels"
             )
         if DEBUG:
             info = devs[self.output_device]
@@ -69,6 +74,7 @@ class Controller:
         self.tts_capture_buffer = ""
 
         # Audio playback state
+        self._playback = None
         self.music_entries = [] # Current music list
         self.load_music_list() # Load music list from disk
 
@@ -214,6 +220,9 @@ class Controller:
     def run(self):
         # Initialize audio & mic volume scroll
         mouse.hook(self.on_scroll)
+
+        # Initialize single instances
+        self._playback = Playback()
 
         # Initialize main window
         app = MainWindow(self)
