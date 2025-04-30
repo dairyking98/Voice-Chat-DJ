@@ -59,15 +59,18 @@ class Controller:
         # Bind hotkeys
         self._start_keyboard_listeners()
 
-        # Audio & mic volume popup
+        # Audio & mic volume popup state
         self.time_last_volume_popup = 0
         self.music_volume = 100
         self.mic_volume = 100
 
-
         # TTS state
         self.tts_capture_mode = False
         self.tts_capture_buffer = ""
+
+        # Audio playback state
+        self.music_entries = [] # Current music list
+        self.load_music_list() # Load music list from disk
 
     # --------------   Event Handlers   ------------
 
@@ -98,6 +101,16 @@ class Controller:
             keyboard.add_hotkey('ctrl+t', self.show_tts_entry_popup)
             keyboard.wait()  # Keep listener alive
         threading.Thread(target=listen, daemon=True).start()
+
+    # --------------   Audio Playback   ------------
+
+    def load_music_list(self):
+        self.music_entries.clear()
+        for folder in (MUSIC_DIR, YOUTUBE_DIR):
+            if not os.path.isdir(folder): continue
+            for fn in sorted(os.listdir(folder)):
+                if fn.lower().endswith(('.wav', '.mp3')):
+                    self.music_entries.append((fn, os.path.join(folder, fn)))
 
     # --------------   UI Helpers   ------------
 

@@ -21,8 +21,21 @@ class MainWindow(tk.Tk):
         self.title("VCDJ")
         self.geometry("900x600")
 
+        # Toolbar
         self._create_menu()
 
+        # TK Inputs
+        self.input_device_cb = None # Input device combobox
+        self.output_device_cb = None # Output device combobox
+
+        # Audio playback states
+        self.music_list = None # Music listbox
+
+        # Audio input States
+        self.input_device_name_to_index = None # Input device name to index mapping
+        self.output_device_name_to_index = None # Output device name to index mapping
+
+        # Frames
         self._create_device_selection_frame()
         self._create_play_pause_controls_frame()
         self._create_media_selection_frame()
@@ -54,10 +67,15 @@ class MainWindow(tk.Tk):
 
 
     def _create_media_selection_frame(self):
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill=tk.X)
+        paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
+        paned.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(top, text="[Media Selection Goes Here]").pack(side=tk.LEFT)
+        musicFrame = ttk.Labelframe(paned, text="Music Library", width=300)
+        paned.add(musicFrame, weight=1)
+        self.music_list = tk.Listbox(musicFrame)
+        self.music_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        ttk.Button(musicFrame, text="Refresh", command=self._refresh_music).pack(pady=5)
+        self._refresh_music() # Load music list on startup
         
 
     def _create_device_selection_frame(self):
@@ -69,10 +87,10 @@ class MainWindow(tk.Tk):
         devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
                 if p.get_device_info_by_index(i)['maxInputChannels'] > 0]
 
-        self.device_name_to_index = {d['name']: i for i, d in devs}
+        self.input_device_name_to_index = {d['name']: i for i, d in devs}
 
         ttk.Label(top, text="Mic In:").pack(side=tk.LEFT)
-        self.input_device_cb = ttk.Combobox(top, values=list(self.device_name_to_index.keys()), state="readonly")
+        self.input_device_cb = ttk.Combobox(top, values=list(self.input_device_name_to_index.keys()), state="readonly")
         self.input_device_cb.pack(side=tk.LEFT, padx=5)
         self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
 
@@ -104,9 +122,21 @@ class MainWindow(tk.Tk):
 
     def _pause_resume_music(self):
         print("Pause/Resume music")    
+        sel = self.music_list.curselection()
+        if not sel:
+            return
+        track_index = sel[0]
+        
     
     def _stop_music(self):
-        print("Stop music")    
+        print("Stop music")
+
+    def _refresh_music(self):
+        self.controller.load_music_list() # Read music list from disk and update music_entries
+        if self.music_list:
+            self.music_list.delete(0, tk.END)
+        for name, _ in self.controller.music_entries:
+            self.music_list.insert(tk.END, name)
 
     # --------------   Main Loop   ------------
 
