@@ -21,8 +21,12 @@ P = pyaudio.PyAudio()
 output_device = None # Output device index
 input_device = None # Input device index
 
+music_volume = 100 # Music volume percentage
+mic_volume = 100 # Mic volume percentage
 
-# ------------   HELPER FUNCTIONS   ------------
+time_last_volume_popup = 0
+
+# ------------   DEVICE SELECTION FUNCTIONS   ------------
 
 def list_audio_devices():
     devices = []
@@ -66,9 +70,64 @@ def select_input_device(devices):
     return False
 
 
+# ------------   UI FUNCTIONS   ------------
+
+
+def show_popup(text, duration=1000):
+    def _popup():
+        root = tk.Tk()
+        root.overrideredirect(True)
+        root.attributes("-topmost", True)
+        lbl = tk.Label(root, text=text,
+                       font=("Segoe UI", 16, "bold"),
+                       bg="black", fg="white",
+                       padx=20, pady=10)
+        lbl.pack()
+        root.update_idletasks()
+        w, h = root.winfo_width(), root.winfo_height()
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        x = (sw - w)//2
+        y = 0  # top center
+        root.geometry(f"{w}x{h}+{x}+{y}")
+        root.after(duration, root.destroy)
+        root.mainloop()
+    threading.Thread(target=_popup, daemon=True).start()
+
+# ------------   EVENT LISTENERS   ------------
+
+# Handle music and microphone volume changes with mouse scroll + ctrl/alt key
+def on_scroll(event):
+    # Ignore non-scroll events
+    if not hasattr(event, 'delta'):
+        return
+
+    # Limit event handler rate to interval of 50ms
+    global time_last_volume_popup
+    limit = 50 # Interval in ms
+    time = getTime()
+    if time - time_last_volume_popup < 50:
+        return
+    time_last_volume_popup = time
+
+    global music_volume, mic_volume
+    dy = event.delta
+    if keyboard.is_pressed('ctrl'):
+        music_volume = max(0, min(300, music_volume + (5 if dy > 0 else -5)))
+        show_popup(f"Music: {music_volume}%")
+    elif keyboard.is_pressed('alt'):
+        mic_volume = max(0, min(100, mic_volume + (5 if dy > 0 else -5)))
+        show_popup(f"Mic: {mic_volume}%")
+
+# --------------   HELPER FUNCTIONS   ------------
+
+def getTime():
+    return int(time.time()*1000)
+
 # ------------   MAIN   ------------
 
 def main():
+    # -------- INITIALIZE AUDIO DEVICES ------
+
     # List audio devices and allow user to select one
     global output_device
     devices = list_audio_devices()
@@ -89,11 +148,14 @@ def main():
     # If no input device is found, user will be able to stream audio and TTS only
     found_valid_input_device = select_input_device(devices)
 
+    # --------- INITIALIZE EVENT LISTENERS -------
+    
+    mouse.hook(on_scroll) # Mouse event listener
 
-    input("Everything looks good. Type anything to exit...")
+    # --------- CLEANUP -------
 
-    # Terminate pyaudio instance before exiting
-    P.terminate()
+    P.terminate() # Terminate pyaudio instance before exiting
+    input("Exiting...") # Pause before exiting program
 
 
 if __name__ == "__main__":
