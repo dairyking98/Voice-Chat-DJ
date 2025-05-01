@@ -111,6 +111,7 @@ class MainWindow(tk.Tk):
         self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly")
         self.input_device_cb.pack(side=tk.LEFT, padx=5)
         self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
+        self.input_device_cb.current(0) # Set default mic device
 
         # ------ SPEAKER OUT ------
         p = self.controller.p
@@ -145,13 +146,10 @@ class MainWindow(tk.Tk):
 
         voice = self.controller._tts.voicelist[int(voice_idx)]
 
-        print(f"Selected TTS voice: {voice.name} ({voice.id})")
-
         self.controller._tts.tts_voice_id = voice.id
         self.controller._tts.tts_voice_name = str(voice.name)
         self.controller._tts.update_tts_voice()
 
-        print(f"TTS voice changed to: {voice_id}")
 
     def _on_output_device_change(self, event):
         dev_id = self.output_device_cb.get()
@@ -173,10 +171,8 @@ class MainWindow(tk.Tk):
 
     def _on_mic_mode_change(self, event):
         mode = self.mic_mode.get()
-        print(f"Mic mode changed to: {mode}")
 
     def _pause_resume_music(self):
-        print("Pause/Resume music")    
         sel = self.music_list.curselection()
         if not sel:
             return

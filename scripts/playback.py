@@ -5,7 +5,7 @@ import wave
 import time
 import array
 
-from config import FORMAT, MUSIC_CHUNK, DEBUG
+from config import FORMAT, MUSIC_CHUNK, DEBUG, MIC_CHANNELS, MIC_RATE, MIC_CHUNK
 
 from .utils import convert_channels, adjust_volume
 
@@ -17,6 +17,8 @@ class Playback():
         self._playback_thread  = None
         self._pause_flag       = threading.Event()
         self._stop_flag        = threading.Event()
+        self.stop_mic_flag     = threading.Event()
+        self.mic_thread        = None
 
     def _playback(self, path, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, listen_volume, music_volume):
         # device info
@@ -123,6 +125,45 @@ class Playback():
             daemon=True
         )
         self._playback_thread.start()
+
+    ### MIC PASSTHROUGH ###
+    def switch_to_mic(self, p, sel_in_dev, sel_out_dev, sel_listen_dev, listen_mic_enabled, mic_volume):
+        if self.mic_thread and self.mic_thread.is_alive(): return
+        def _mic_loop():
+            self.stop_mic_flag.clear()
+            out_ch=p.get_device_info_by_index(sel_out_dev)['maxOutputChannels']
+            in_s=p.open(format=FORMAT,channels=MIC_CHANNELS,rate=MIC_RATE,
+                        input=True,input_device_index=sel_in_dev,
+                        frames_per_buffer=MIC_CHUNK)
+            out_s1=p.open(format=FORMAT,channels=out_ch,rate=MIC_RATE,
+                        output=True,output_device_index=sel_out_dev,
+                        frames_per_buffer=MIC_CHUNK)
+            out_s2=None
+            if listen_mic_enabled and sel_listen_dev is not None:
+                try:
+                    out_s2=p.open(format=FORMAT,channels=out_ch,rate=MIC_RATE,
+                                output=True,output_device_index=sel_listen_dev,
+                                frames_per_buffer=MIC_CHUNK)
+                except: debug("mic-listen fail")
+
+            while not self.stop_mic_flag.is_set():
+                data=in_s.read(MIC_CHUNK,exception_on_overflow=False)
+                data=convert_channels(data,MIC_CHANNELS,out_ch)
+                data=adjust_volume(data,mic_volume)
+                out_s1.write(data)
+                if out_s2: out_s2.write(data)
+
+            in_s.stop_stream();in_s.close()
+            out_s1.stop_stream();out_s1.close()
+            if out_s2: out_s2.stop_stream();out_s2.close()
+
+        self.mic_thread=threading.Thread(target=_mic_loop,daemon=True)
+        self.mic_thread.start()
+
+    def stop_mic(self):
+        if self.mic_thread and self.mic_thread.is_alive():
+            self.stop_mic_flag.set()
+            self.mic_thread.join(timeout=1)
 
 
     def pause_music(self):

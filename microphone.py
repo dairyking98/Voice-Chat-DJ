@@ -42,7 +42,7 @@ class Controller:
         devs = [self.p.get_device_info_by_index(i)
                 for i in range(self.p.get_device_count())]
 
-        self.input_device = None
+        self.input_device = 0 # Default input device
 
         # Route all audio into the cable's record endpoint
         self.output_device = next(
@@ -116,6 +116,12 @@ class Controller:
             for fn in sorted(os.listdir(folder)):
                 if fn.lower().endswith(('.wav', '.mp3')):
                     self.music_entries.append((fn, os.path.join(folder, fn)))
+
+    def mic_down(self):
+        self._playback.switch_to_mic(self.p, self.input_device, self.output_device, None, None, self.mic_volume)
+
+    def mic_up(self):
+        self._playback.stop_mic()
 
     # --------------   UI Helpers   ------------
 
@@ -219,6 +225,11 @@ class Controller:
     def run(self):
         # Initialize audio & mic volume scroll
         mouse.hook(self.on_scroll)
+
+        # Mic passthrough binds
+        mouse.on_button(self.mic_down, buttons=['x'], types=['down'])
+        mouse.on_button(self.mic_up,   buttons=['x'], types=['up'])
+    
 
         # Initialize single instances
         self._playback = Playback()
