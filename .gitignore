@@ -9,3 +9,7 @@
 !/binds/.gitkeep
 
 scripts/__pycache__/
+__pycache__/
+
+tts_raw.wav
+tts_stereo48k.wav
