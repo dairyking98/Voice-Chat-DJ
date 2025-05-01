@@ -43,8 +43,6 @@ class Controller:
 
         self.input_device = None
 
-        print(len(devs), "devices found:")
-
         # Route all audio into the cable's record endpoint
         self.output_device = next(
             (i for i, info in enumerate(devs)
@@ -108,7 +106,7 @@ class Controller:
             keyboard.wait()  # Keep listener alive
         threading.Thread(target=listen, daemon=True).start()
 
-    # --------------   Audio Playback   ------------
+    # --------------   Audio Related Functions   ------------
 
     def load_music_list(self):
         self.music_entries.clear()
