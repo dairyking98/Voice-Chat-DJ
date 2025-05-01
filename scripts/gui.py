@@ -75,7 +75,15 @@ class MainWindow(tk.Tk):
         self.music_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         ttk.Button(musicFrame, text="Refresh", command=self._refresh_music).pack(pady=5)
         self._refresh_music() # Load music list on startup
-        
+
+        ttsFrame = ttk.Labelframe(paned, text="TTS", width=300)
+        paned.add(ttsFrame, weight=1)
+        # add textbox textarea
+        self.tts_text = tk.Text(ttsFrame, height=5)
+        self.tts_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        ttk.Button(ttsFrame, text="Play TTS", command=self._play_tts).pack(pady=5)
+        ttk.Button(ttsFrame, text="Clear TTS", command=self._clear_tts).pack(pady=5)
+
 
     def _create_device_selection_frame(self):
         top = ttk.Frame(self, padding=10)
@@ -161,6 +169,15 @@ class MainWindow(tk.Tk):
             self.music_list.delete(0, tk.END)
         for name, _ in self.controller.music_entries:
             self.music_list.insert(tk.END, name)
+
+    def _play_tts(self):
+        text = self.tts_text.get("1.0", tk.END).strip()
+        if not text:
+            return
+        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.input_device, False)
+    
+    def _clear_tts(self):
+        self.tts_text.delete("1.0", tk.END)
 
     # --------------   Main Loop   ------------
 
