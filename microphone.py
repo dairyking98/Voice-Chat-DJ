@@ -17,6 +17,7 @@ import ctypes
 
 # Custom classes
 from scripts.playback import Playback
+from scripts.tts import TTS
 from scripts.gui import MainWindow
 from scripts.utils import getTime
 
@@ -189,7 +190,7 @@ class Controller:
                 text = self.tts_capture_buffer.strip()
                 cancel() # Cancel out of tts popup; clear buffer
                 if text:
-                    # play_tts(text) # TODO implement
+                    self._tts.play_tts(text, self.p, self.output_device, self.input_device, False)
                     print("Playing TTS:", text)
                 return
 
@@ -221,6 +222,7 @@ class Controller:
 
         # Initialize single instances
         self._playback = Playback()
+        self._tts = TTS()
 
         # Initialize main window
         app = MainWindow(self)
