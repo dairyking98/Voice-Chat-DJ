@@ -71,14 +71,14 @@ class MainWindow(tk.Tk):
         paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
 
-        musicFrame = ttk.Labelframe(paned, text="Music Library", width=300)
+        musicFrame = ttk.Labelframe(paned, text="Music Library", width=200)
         paned.add(musicFrame, weight=1)
         self.music_list = tk.Listbox(musicFrame)
         self.music_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         ttk.Button(musicFrame, text="Refresh", command=self._refresh_music).pack(pady=5)
         self._refresh_music() # Load music list on startup
 
-        ttsFrame = ttk.Labelframe(paned, text="TTS", width=300)
+        ttsFrame = ttk.Labelframe(paned, text="TTS", width=200)
         paned.add(ttsFrame, weight=1)
         # add textbox textarea
         self.tts_text = tk.Text(ttsFrame, height=5)
@@ -90,7 +90,7 @@ class MainWindow(tk.Tk):
 
         # Add TTS voice selection
         ttk.Label(ttsFrame, text="TTS Voice").pack(side=tk.LEFT)
-        self.tts_voice_cb = ttk.Combobox(ttsFrame, values=self.tts_voice_list, state="readonly")
+        self.tts_voice_cb = ttk.Combobox(ttsFrame, values=self.tts_voice_list, state="readonly", width=60)
         self.tts_voice_cb.pack(side=tk.LEFT, padx=5)
         self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
 
