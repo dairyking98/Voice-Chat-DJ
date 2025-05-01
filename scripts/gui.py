@@ -27,8 +27,10 @@ class MainWindow(tk.Tk):
         # TK Inputs
         self.input_device_cb = None # Input device combobox
         self.output_device_cb = None # Output device combobox
+        self.tts_voice_cb = None # TTS voice combobox
         self.input_devs = [] # Input devices list
         self.output_devs = [] # Output devices list
+        self.tts_voice_list = [] # TTS voices list
 
         # Audio playback states
         self.music_list = None # Music listbox
@@ -81,8 +83,16 @@ class MainWindow(tk.Tk):
         # add textbox textarea
         self.tts_text = tk.Text(ttsFrame, height=5)
         self.tts_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        ttk.Button(ttsFrame, text="Play TTS", command=self._play_tts).pack(pady=5)
-        ttk.Button(ttsFrame, text="Clear TTS", command=self._clear_tts).pack(pady=5)
+        ttk.Button(ttsFrame, text="Play TTS", command=self._play_tts).pack(side=tk.LEFT, padx=10)
+        ttk.Button(ttsFrame, text="Clear TTS", command=self._clear_tts).pack(side=tk.LEFT, padx=10)
+
+        self.tts_voice_list = [f"{i}: {d.name}" for i, d in enumerate(self.controller._tts.voicelist)]
+
+        # Add TTS voice selection
+        ttk.Label(ttsFrame, text="TTS Voice").pack(side=tk.LEFT)
+        self.tts_voice_cb = ttk.Combobox(ttsFrame, values=self.tts_voice_list, state="readonly")
+        self.tts_voice_cb.pack(side=tk.LEFT, padx=5)
+        self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
 
 
     def _create_device_selection_frame(self):
@@ -128,6 +138,20 @@ class MainWindow(tk.Tk):
         dev_id = self.input_device_cb.get()
         dev_idx = dev_id.split(":")[0]
         self.controller.input_device = int(dev_idx)
+
+    def _on_tts_voice_change(self, event):
+        voice_id = self.tts_voice_cb.get()
+        voice_idx = voice_id.split(":")[0]
+
+        voice = self.controller._tts.voicelist[int(voice_idx)]
+
+        print(f"Selected TTS voice: {voice.name} ({voice.id})")
+
+        self.controller._tts.tts_voice_id = voice.id
+        self.controller._tts.tts_voice_name = str(voice.name)
+        self.controller._tts.update_tts_voice()
+
+        print(f"TTS voice changed to: {voice_id}")
 
     def _on_output_device_change(self, event):
         dev_id = self.output_device_cb.get()

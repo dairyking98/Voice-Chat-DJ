@@ -69,5 +69,10 @@ class TTS():
 
         threading.Thread(target=_play, daemon=True).start()
 
+    def update_tts_voice(self):
+        self.engine.setProperty('voice', self.tts_voice_id)
+        # self.engine.setProperty('volume', self.tts_volume / 100)
+        # print(f"Updated TTS voice to: {self.tts_voice_name} ({self.tts_voice_id})")
+
     def run(self):
         self.mainloop()
