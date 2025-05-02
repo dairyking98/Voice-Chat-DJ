@@ -30,6 +30,9 @@ class MainWindow(tk.Tk):
         self.output_devs = [] # Output devices list
         self.tts_voice_list = [] # TTS voices list
 
+        self.youtube_url = None # Youtube URL text entry
+
+        # Listen mode states
         self.listen_mic = None # Listen mic flag
         self.listen_music = None # Listen music flag
         self.listen_tts = None # Listen tts flag
@@ -103,17 +106,6 @@ class MainWindow(tk.Tk):
 
         ttk.Label(top, text="Listen Mode: ").pack(side=tk.RIGHT, padx=5)
 
-    def _set_all_listen_modes(self, state):
-        self.listen_mic.set(state)
-        self.listen_music.set(state)
-        self.listen_tts.set(state)
-        self._on_listen_mode_change()
-
-    def _on_listen_mode_change(self):
-        self.controller.listen_enabled_mic = self.listen_mic.get()
-        self.controller.listen_enabled_music = self.listen_music.get()
-        self.controller.listen_enabled_tts = self.listen_tts.get()
-
     def _create_media_selection_frame(self):
         paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
@@ -154,6 +146,16 @@ class MainWindow(tk.Tk):
         ).pack(side=tk.LEFT)
 
         ttk.Label(top, text="[Audio Meter Goes Here]").pack(side=tk.LEFT)
+
+        
+        ttk.Label(top, text="").pack(side=tk.LEFT, padx=10) # Horizontal spacer
+
+
+        # add a textbox (not a textarea) for a youtube URL and then a button that says Download Youtube Video
+        ttk.Label(top, text="Youtube URL:").pack(side=tk.LEFT)
+        self.youtube_url = tk.Entry(top, width=50)
+        self.youtube_url.pack(side=tk.LEFT, padx=5)
+        ttk.Button(top, text="Download", command=self.play_youtube_url).pack(side=tk.LEFT, padx=5)
 
                 
     # --------------   Handlers   ------------
@@ -205,6 +207,21 @@ class MainWindow(tk.Tk):
     
     def _clear_tts(self):
         self.tts_text.delete("1.0", tk.END)
+
+    def _set_all_listen_modes(self, state):
+        self.listen_mic.set(state)
+        self.listen_music.set(state)
+        self.listen_tts.set(state)
+        self._on_listen_mode_change()
+
+    def _on_listen_mode_change(self):
+        self.controller.listen_enabled_mic = self.listen_mic.get()
+        self.controller.listen_enabled_music = self.listen_music.get()
+        self.controller.listen_enabled_tts = self.listen_tts.get()
+
+    def play_youtube_url(self):
+        url = self.youtube_url.get().strip()
+        self.controller.play_youtube_url(url)
 
     # --------------   Main Loop   ------------
 

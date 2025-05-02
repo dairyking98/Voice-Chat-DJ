@@ -39,6 +39,7 @@ class Controller:
 
         # Initialize PyAudio & enumerate devices
         self.p = pyaudio.PyAudio()
+        self.app = None # Main window
         devs = [self.p.get_device_info_by_index(i)
                 for i in range(self.p.get_device_count())]
 
@@ -122,6 +123,30 @@ class Controller:
             for fn in sorted(os.listdir(folder)):
                 if fn.lower().endswith(('.wav', '.mp3')):
                     self.music_entries.append((fn, os.path.join(folder, fn)))
+
+    def play_youtube_url(self, url):
+        def _dl():
+            self._playback.stop_music()
+            opts={'format':'bestaudio/best',
+                'outtmpl':os.path.join(YOUTUBE_DIR,'%(title)s.%(ext)s'),
+                'quiet':True,
+                'postprocessors':[{'key':'FFmpegExtractAudio',
+                                    'preferredcodec':'wav',
+                                    'preferredquality':'192'}]}
+            with youtube_dl.YoutubeDL(opts) as ydl:
+                info=ydl.extract_info(url,download=True)
+
+            self.app._refresh_music()
+
+            name=info.get('title')+'.wav'
+            for idx,(n,path) in enumerate(self.music_entries):
+                if n==name: 
+                    self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, 100, self.music_volume)
+                    self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
+                    self.app.music_list.see(idx)                  # Scroll to it
+                    return
+            print("Downloaded not found.")
+        threading.Thread(target=_dl,daemon=True).start()
 
     def mic_down(self):
         self._playback.switch_to_mic(self.p, self.input_device, self.output_device, self.listen_device, self.listen_enabled_mic, self.mic_volume)
@@ -242,8 +267,8 @@ class Controller:
         self._tts = TTS()
 
         # Initialize main window
-        app = MainWindow(self)
-        app.run()
+        self.app = MainWindow(self)
+        self.app.run()
 
         self.p.terminate()
         
