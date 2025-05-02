@@ -19,7 +19,7 @@ class MainWindow(tk.Tk):
         super().__init__()
         self.controller = controller
         self.title("VCDJ")
-        self.geometry("900x600")
+        self.geometry("1200x800")
 
         # TK Inputs
         self.input_device_cb = None # Input device combobox
@@ -69,7 +69,7 @@ class MainWindow(tk.Tk):
         self.input_devs = [f"{i}: {d['name']}" for i, d in devs]
 
         ttk.Label(top, text="Mic In:").pack(side=tk.LEFT)
-        self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly")
+        self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly", width=40)
         self.input_device_cb.pack(side=tk.LEFT, padx=5)
         self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
         self.input_device_cb.current(0) # Set default mic device
@@ -83,7 +83,7 @@ class MainWindow(tk.Tk):
         self.output_devs = [f"{i}: {d['name']}" for i, d in devs]
 
         ttk.Label(top, text="Speaker Out (Listen):").pack(side=tk.LEFT)
-        self.output_device_cb = ttk.Combobox(top, values=self.output_devs, state="readonly")
+        self.output_device_cb = ttk.Combobox(top, values=self.output_devs, state="readonly", width=40)
         self.output_device_cb.pack(side=tk.LEFT, padx=5)
         self.output_device_cb.bind('<<ComboboxSelected>>', self._on_output_device_change)
 
