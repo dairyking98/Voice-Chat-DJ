@@ -23,8 +23,10 @@ class Playback():
     def _playback(self, path, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, listen_volume, music_volume):
         # device info
         out_info = pyaudio_instance.get_device_info_by_index(sel_out_dev)
-        if DEBUG: print(out_info)
         out_ch = out_info['maxOutputChannels']
+
+        listen_info = pyaudio_instance.get_device_info_by_index(sel_listen_dev) if sel_listen_dev is not None else None
+        listen_ch = listen_info['maxOutputChannels'] if listen_info else 0
 
         # set up reader/cleanup for wav vs other formats
         if path.lower().endswith('.wav'):
@@ -78,7 +80,7 @@ class Playback():
             try:
                 listen_stream = pyaudio_instance.open(
                     format=FORMAT,
-                    channels=out_ch,
+                    channels=listen_ch,
                     rate=rate,
                     output=True,
                     output_device_index=sel_listen_dev,
@@ -98,7 +100,7 @@ class Playback():
                 data = reader(MUSIC_CHUNK)
                 continue
 
-            chunk = convert_channels(data, in_ch, out_ch)
+            chunk = convert_channels(data, 1, 1)
             stream.write(adjust_volume(chunk, music_volume))
             if listen_stream:
                 listen_stream.write(adjust_volume(chunk, listen_volume))
@@ -113,13 +115,13 @@ class Playback():
         cleanup()
         self._current_proc = None
 
-    def play_music(self, path, pyaudio_instance, output_device, input_device, listen_enabled, listen_volume, music_volume):
+    def play_music(self, path, pyaudio_instance, output_device, listen_device, listen_enabled, listen_volume, music_volume):
         self.stop_music()
         self._playback_thread = threading.Thread(
             target=self._playback,
             args=(
                 path, pyaudio_instance, output_device,
-                input_device, listen_enabled,
+                listen_device, listen_enabled,
                 listen_volume, music_volume
             ),
             daemon=True

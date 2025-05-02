@@ -21,20 +21,24 @@ class MainWindow(tk.Tk):
         self.title("VCDJ")
         self.geometry("900x600")
 
-        # Toolbar
-        self._create_menu()
-
         # TK Inputs
         self.input_device_cb = None # Input device combobox
         self.output_device_cb = None # Output device combobox
         self.tts_voice_cb = None # TTS voice combobox
+
         self.input_devs = [] # Input devices list
         self.output_devs = [] # Output devices list
         self.tts_voice_list = [] # TTS voices list
 
+        self.listen_mic = None # Listen mic flag
+        self.listen_music = None # Listen music flag
+        self.listen_tts = None # Listen tts flag
+
         # Audio playback states
         self.music_list = None # Music listbox
-        self.default_output_device = None # Default output device
+
+        # Toolbar
+        self._create_menu()
 
         # Frames
         self._create_device_selection_frame()
@@ -52,20 +56,63 @@ class MainWindow(tk.Tk):
 
     # --------------   Frames   ------------
 
-    def _create_play_pause_controls_frame(self):
+    def _create_device_selection_frame(self):
         top = ttk.Frame(self, padding=10)
         top.pack(fill=tk.X)
 
-        ttk.Button(
-            top, text="Pause/Resume", command=self._pause_resume_music
-        ).pack(side=tk.LEFT)
+        # ------ MIC IN ------
+        p = self.controller.p
+        devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
+                if p.get_device_info_by_index(i)['maxInputChannels'] > 0]
 
-        ttk.Button(
-            top, text="Stop", command=self._stop_music
-        ).pack(side=tk.LEFT)
+        # Format list of devices as "index: name"
+        self.input_devs = [f"{i}: {d['name']}" for i, d in devs]
 
-        ttk.Label(top, text="[Audio Meter Goes Here]").pack(side=tk.LEFT)
+        ttk.Label(top, text="Mic In:").pack(side=tk.LEFT)
+        self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly")
+        self.input_device_cb.pack(side=tk.LEFT, padx=5)
+        self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
+        self.input_device_cb.current(0) # Set default mic device
 
+        # ------ SPEAKER OUT ------
+        p = self.controller.p
+        devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
+                if p.get_device_info_by_index(i)['maxOutputChannels'] > 0]
+
+        # Format list of devices as "index: name"
+        self.output_devs = [f"{i}: {d['name']}" for i, d in devs]
+
+        ttk.Label(top, text="Speaker Out (Listen):").pack(side=tk.LEFT)
+        self.output_device_cb = ttk.Combobox(top, values=self.output_devs, state="readonly")
+        self.output_device_cb.pack(side=tk.LEFT, padx=5)
+        self.output_device_cb.bind('<<ComboboxSelected>>', self._on_output_device_change)
+
+
+        # ----- LISTEN MODES -----
+
+        self.listen_mic = tk.BooleanVar(value=False)
+        self.listen_music = tk.BooleanVar(value=False)
+        self.listen_tts = tk.BooleanVar(value=False)
+
+        ttk.Button(top, text="None", command=lambda: self._set_all_listen_modes(False)).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top, text="All", command=lambda: self._set_all_listen_modes(True)).pack(side=tk.RIGHT, padx=2)
+
+        ttk.Checkbutton(top, text="TTS", variable=self.listen_tts, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
+        ttk.Checkbutton(top, text="Music", variable=self.listen_music, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
+        ttk.Checkbutton(top, text="Mic", variable=self.listen_mic, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
+
+        ttk.Label(top, text="Listen Mode: ").pack(side=tk.RIGHT, padx=5)
+
+    def _set_all_listen_modes(self, state):
+        self.listen_mic.set(state)
+        self.listen_music.set(state)
+        self.listen_tts.set(state)
+        self._on_listen_mode_change()
+
+    def _on_listen_mode_change(self):
+        self.controller.listen_enabled_mic = self.listen_mic.get()
+        self.controller.listen_enabled_music = self.listen_music.get()
+        self.controller.listen_enabled_tts = self.listen_tts.get()
 
     def _create_media_selection_frame(self):
         paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
@@ -94,45 +141,21 @@ class MainWindow(tk.Tk):
         self.tts_voice_cb.pack(side=tk.LEFT, padx=5)
         self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
 
-
-    def _create_device_selection_frame(self):
+    def _create_play_pause_controls_frame(self):
         top = ttk.Frame(self, padding=10)
         top.pack(fill=tk.X)
 
-        # ------ MIC IN ------
-        p = self.controller.p
-        devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
-                if p.get_device_info_by_index(i)['maxInputChannels'] > 0]
+        ttk.Button(
+            top, text="Pause/Resume", command=self._pause_resume_music
+        ).pack(side=tk.LEFT)
 
-        # Format list of devices as "index: name"
-        self.input_devs = [f"{i}: {d['name']}" for i, d in devs]
+        ttk.Button(
+            top, text="Stop", command=self._stop_music
+        ).pack(side=tk.LEFT)
 
-        ttk.Label(top, text="Mic In:").pack(side=tk.LEFT)
-        self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly")
-        self.input_device_cb.pack(side=tk.LEFT, padx=5)
-        self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
-        self.input_device_cb.current(0) # Set default mic device
+        ttk.Label(top, text="[Audio Meter Goes Here]").pack(side=tk.LEFT)
 
-        # ------ SPEAKER OUT ------
-        p = self.controller.p
-        devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
-                if p.get_device_info_by_index(i)['maxOutputChannels'] > 0]
-
-        # Format list of devices as "index: name"
-        self.output_devs = [f"{i}: {d['name']}" for i, d in devs]
-
-        ttk.Label(top, text="Speaker Out:").pack(side=tk.LEFT)
-        self.output_device_cb = ttk.Combobox(top, values=self.output_devs, state="readonly")
-        self.output_device_cb.pack(side=tk.LEFT, padx=5)
-        self.output_device_cb.bind('<<ComboboxSelected>>', self._on_output_device_change)
-
-        # Set default output device
-        if self.controller.output_device is not None:
-            self.default_output_device = self.controller.output_device
-            self._set_output_device_to_default()
                 
-        ttk.Button(top, text="Set Output to Default", command=self._set_output_device_to_default).pack(side=tk.LEFT, padx=5)
-
     # --------------   Handlers   ------------
 
     def _on_device_change(self, event):
@@ -154,30 +177,14 @@ class MainWindow(tk.Tk):
     def _on_output_device_change(self, event):
         dev_id = self.output_device_cb.get()
         dev_idx = dev_id.split(":")[0]
-        self.controller.output_device = int(dev_idx)
-
-    def _set_output_device_to_default(self):
-        if self.default_output_device is not None:
-            # Set output device to default
-            self.controller.output_device = self.default_output_device
-
-            # Update GUI
-            # Find the formatted string that matches the index
-            target_value = f"{self.controller.output_device}:"
-            for i, item in enumerate(self.output_devs):
-                if item.startswith(target_value):
-                    self.output_device_cb.current(i)
-                    break
-
-    def _on_mic_mode_change(self, event):
-        mode = self.mic_mode.get()
+        self.controller.listen_device = int(dev_idx)
 
     def _pause_resume_music(self):
         sel = self.music_list.curselection()
         if not sel:
             return
         track_index = sel[0]
-        self.controller._playback.play_music(self.controller.music_entries[track_index][1], self.controller.p, self.controller.output_device, self.controller.input_device, False, 0, self.controller.music_volume)
+        self.controller._playback.play_music(self.controller.music_entries[track_index][1], self.controller.p,  self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_music, 100, self.controller.music_volume)
 
     
     def _stop_music(self):
@@ -194,7 +201,7 @@ class MainWindow(tk.Tk):
         text = self.tts_text.get("1.0", tk.END).strip()
         if not text:
             return
-        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.input_device, False)
+        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts)
     
     def _clear_tts(self):
         self.tts_text.delete("1.0", tk.END)

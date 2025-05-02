@@ -51,6 +51,8 @@ class Controller:
              and info['maxOutputChannels'] == 2),
             None
         )
+
+        self.listen_device = None # Default listen device
         
         if self.output_device is None:
             raise RuntimeError(
@@ -77,6 +79,10 @@ class Controller:
         self.music_entries = [] # Current music list
         self.load_music_list() # Load music list from disk
 
+        self.listen_enabled_mic = False # Listen mode for micrphone passthrough
+        self.listen_enabled_music = False # Listen mode for music playback
+        self.listen_enabled_tts = False # Listen mode for TTS playback
+
     # --------------   Event Handlers   ------------
 
     def on_scroll(self, event):
@@ -92,10 +98,10 @@ class Controller:
         self.time_last_volume_popup = time
 
         # Update music or mic volume according to scroll direction
-        volumeInterval = 5 # Percent change per scroll
+        volumeInterval = 10 # Percent change per scroll
         dy = event.delta
         if keyboard.is_pressed('ctrl'):
-            self.music_volume = max(0, min(300, self.music_volume + (volumeInterval if dy > 0 else -volumeInterval)))
+            self.music_volume = max(0, min(600, self.music_volume + (volumeInterval if dy > 0 else -volumeInterval)))
             self.show_popup(f"Music: {self.music_volume}%")
         elif keyboard.is_pressed('alt'):
             self.mic_volume = max(0, min(100, self.mic_volume + (volumeInterval if dy > 0 else -volumeInterval)))
@@ -103,7 +109,7 @@ class Controller:
 
     def _start_keyboard_listeners(self):
         def listen():
-            keyboard.add_hotkey('ctrl+t', self.show_tts_entry_popup)
+            keyboard.add_hotkey('ctrl+tab', self.show_tts_entry_popup)
             keyboard.wait()  # Keep listener alive
         threading.Thread(target=listen, daemon=True).start()
 
@@ -118,7 +124,7 @@ class Controller:
                     self.music_entries.append((fn, os.path.join(folder, fn)))
 
     def mic_down(self):
-        self._playback.switch_to_mic(self.p, self.input_device, self.output_device, None, None, self.mic_volume)
+        self._playback.switch_to_mic(self.p, self.input_device, self.output_device, self.listen_device, self.listen_enabled_mic, self.mic_volume)
 
     def mic_up(self):
         self._playback.stop_mic()
@@ -196,7 +202,7 @@ class Controller:
                 text = self.tts_capture_buffer.strip()
                 cancel() # Cancel out of tts popup; clear buffer
                 if text:
-                    self._tts.play_tts(text, self.p, self.output_device, self.input_device, False)
+                    self._tts.play_tts(text, self.p, self.output_device, self.input_device, self.listen_device, False)
                     print("Playing TTS:", text)
                 return
 
