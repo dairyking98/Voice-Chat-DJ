@@ -15,6 +15,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 import ctypes
 import re
+from pynput import mouse as pymouse
 
 # Custom classes
 from scripts.playback import Playback
@@ -85,6 +86,8 @@ class Controller:
         self.listen_enabled_music = False # Listen mode for music playback
         self.listen_enabled_tts = False # Listen mode for TTS playback
 
+        self.mic_pressed = False # Mic pressed state
+
     # --------------   Event Handlers   ------------
 
     def on_scroll(self, event):
@@ -151,10 +154,24 @@ class Controller:
         threading.Thread(target=_dl,daemon=True).start()
 
     def mic_down(self):
+        self.mic_pressed = True
         self._playback.switch_to_mic(self.p, self.input_device, self.output_device, self.listen_device, self.listen_enabled_mic, self.mic_volume)
 
     def mic_up(self):
+        self.mic_pressed = False
         self._playback.stop_mic()
+
+    def mic_listen(self):
+        def on_click(x, y, button, pressed):
+            if button == pymouse.Button.x1:  # Mouse4 button
+                if pressed:
+                    self.mic_down()
+                else:
+                    self.mic_up()
+
+        # Start the listener in a separate thread
+        listener = pymouse.Listener(on_click=on_click)
+        listener.start()
 
     # --------------   UI Helpers   ------------
 
@@ -260,9 +277,7 @@ class Controller:
         mouse.hook(self.on_scroll)
 
         # Mic passthrough binds
-        mouse.on_button(self.mic_down, buttons=['x'], types=['down'])
-        mouse.on_button(self.mic_up,   buttons=['x'], types=['up'])
-    
+        self.mic_listen()
 
         # Initialize single instances
         self._playback = Playback()
@@ -273,6 +288,8 @@ class Controller:
         self.app.run()
 
         self.p.terminate()
+
+    
         
 
 # Start main loop
