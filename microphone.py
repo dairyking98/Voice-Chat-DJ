@@ -83,7 +83,7 @@ class Controller:
         self.listen_enabled_music = False # Listen mode for music playback
         self.listen_enabled_tts = False # Listen mode for TTS playback
 
-        self.mic_pressed = False # Mic pressed state
+        self.mic_mode = "Push to Talk" # Mic mode
 
 
         # Binds config
@@ -176,16 +176,14 @@ class Controller:
 
 
     def mic_down(self):
-        self.mic_pressed = True
         self._playback.switch_to_mic(self.p, self.input_device, self.output_device, self.listen_device, self.listen_enabled_mic, self.mic_volume)
 
     def mic_up(self):
-        self.mic_pressed = False
         self._playback.stop_mic()
 
     def mic_listen(self):
         def on_click(x, y, button, pressed):
-            if button == pymouse.Button.x1:  # Mouse4 button
+            if button == pymouse.Button.x1 and self.mic_mode == "Push to Talk":  # Mouse4 button
                 if pressed:
                     self.mic_down()
                 else:
@@ -194,6 +192,13 @@ class Controller:
         # Start the listener in a separate thread
         listener = pymouse.Listener(on_click=on_click)
         listener.start()
+
+    def set_mic_mode(self, mode):
+        self.mic_mode = mode
+        if mode == "Off" or mode == "Push to Talk":
+            self.mic_up()
+        elif mode == "On":
+            self.mic_down()
 
     # --------------   UI Helpers   ------------
 

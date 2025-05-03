@@ -34,6 +34,8 @@ class MainWindow(tk.Tk):
 
         self.youtube_url = None # Youtube URL text entry
 
+        self.mic_mode_cb = None # Mic mode combobox
+
         # Listen mode states
         self.listen_mic = None # Listen mic flag
         self.listen_music = None # Listen music flag
@@ -167,6 +169,14 @@ class MainWindow(tk.Tk):
         self.tts_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_tts_volume_change)
         self.tts_volume_slider.pack(side=tk.LEFT, padx=5)
         self.tts_volume_slider.set(self.controller._tts.tts_volume)
+
+        # ADD LABEL AND MULTISELECT FOR MIC MODE OFF PSUH TO TALK OR ON
+        ttk.Label(top, text="Mic Mode:").pack(side=tk.LEFT)
+        self.mic_mode = tk.StringVar(value="Push to Talk")
+        self.mic_mode_cb = ttk.Combobox(top, values=["Off", "On", "Push to Talk"], state="readonly", width=20)
+        self.mic_mode_cb.current(2)
+        self.mic_mode_cb.pack(side=tk.LEFT, padx=5)
+        self.mic_mode_cb.bind('<<ComboboxSelected>>', lambda e: self.controller.set_mic_mode(self.mic_mode_cb.get()))
 
     
     def _create_media_selection_frame(self):
