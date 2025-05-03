@@ -14,6 +14,7 @@ import pyttsx3
 import tkinter as tk
 from tkinter import font as tkfont
 import ctypes
+import re
 
 # Custom classes
 from scripts.playback import Playback
@@ -140,10 +141,11 @@ class Controller:
 
             name=info.get('title')+'.wav'
             for idx,(n,path) in enumerate(self.music_entries):
-                if n==name: 
-                    self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, self.music_volume)
+                if re.sub(r"\s+", "", n)==re.sub(r"\s+", "", name): 
+                    # self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, self.music_volume)
                     self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                     self.app.music_list.see(idx)                  # Scroll to it
+                    self.app._pause_resume_music()               # Play the audio
                     return
             print("Downloaded not found.")
         threading.Thread(target=_dl,daemon=True).start()
