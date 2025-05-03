@@ -148,7 +148,7 @@ class Controller:
                     # self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, self.music_volume)
                     self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                     self.app.music_list.see(idx)                  # Scroll to it
-                    self.app._pause_resume_music()               # Play the audio
+                    self.app.play_selected_song()                 # Play the audio
                     return
             print("Downloaded not found.")
         threading.Thread(target=_dl,daemon=True).start()

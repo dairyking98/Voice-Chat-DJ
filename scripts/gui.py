@@ -128,9 +128,6 @@ class MainWindow(tk.Tk):
         self.tts_volume_slider.set(self.controller._tts.tts_volume)
 
     
-
-
-
     def _create_media_selection_frame(self):
         paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
@@ -141,6 +138,7 @@ class MainWindow(tk.Tk):
         self.music_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         ttk.Button(musicFrame, text="Refresh", command=self._refresh_music).pack(pady=5)
         self._refresh_music() # Load music list on startup
+        self.music_list.bind('<Double-Button-1>', self.play_selected_song)
 
         ttsFrame = ttk.Labelframe(paned, text="TTS", width=200)
         paned.add(ttsFrame, weight=1)
@@ -207,12 +205,18 @@ class MainWindow(tk.Tk):
         self.controller.listen_device = int(dev_idx)
 
     def _pause_resume_music(self):
+        # Toggle pause flag
+        if self.controller._playback._pause_flag.is_set():
+            self.controller._playback.resume_music()
+        else:
+            self.controller._playback.pause_music()
+
+    def play_selected_song(self, event):
         sel = self.music_list.curselection()
         if not sel:
             return
         track_index = sel[0]
-        self.controller._playback.play_music(self.controller.music_entries[track_index][1], self.controller.p,  self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_music, self.controller.music_volume)
-
+        self.controller._playback.play_music(self.controller.music_entries[track_index][1], self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_music, self.controller.music_volume)
     
     def _stop_music(self):
         self.controller._playback.stop_music()
