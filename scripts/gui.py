@@ -45,6 +45,7 @@ class MainWindow(tk.Tk):
 
         # Frames
         self._create_device_selection_frame()
+        self._create_volume_frame()
         self._create_play_pause_controls_frame()
         self._create_media_selection_frame()
 
@@ -105,6 +106,30 @@ class MainWindow(tk.Tk):
         ttk.Checkbutton(top, text="Mic", variable=self.listen_mic, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
 
         ttk.Label(top, text="Listen Mode: ").pack(side=tk.RIGHT, padx=5)
+
+    def _create_volume_frame(self):
+        top = ttk.Frame(self, padding=10)
+        top.pack(fill=tk.X)
+
+        # create a volume slider for each volume type (music_volume, mic_volume, tts_volume)
+        ttk.Label(top, text="Music Volume:").pack(side=tk.LEFT)
+        self.music_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_music_volume_change)
+        self.music_volume_slider.pack(side=tk.LEFT, padx=5)
+        self.music_volume_slider.set(self.controller.music_volume)
+
+        ttk.Label(top, text="Mic Volume:").pack(side=tk.LEFT)
+        self.mic_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_mic_volume_change)
+        self.mic_volume_slider.pack(side=tk.LEFT, padx=5)
+        self.mic_volume_slider.set(self.controller.mic_volume)
+
+        ttk.Label(top, text="TTS Volume:").pack(side=tk.LEFT)
+        self.tts_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_tts_volume_change)
+        self.tts_volume_slider.pack(side=tk.LEFT, padx=5)
+        self.tts_volume_slider.set(self.controller._tts.tts_volume)
+
+    
+
+
 
     def _create_media_selection_frame(self):
         paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
@@ -222,6 +247,16 @@ class MainWindow(tk.Tk):
     def play_youtube_url(self):
         url = self.youtube_url.get().strip()
         self.controller.play_youtube_url(url)
+
+
+    def _on_music_volume_change(self, value):
+        self.controller.music_volume = int(float(value))
+    
+    def _on_mic_volume_change(self, value):
+        self.controller.mic_volume = int(float(value))
+    
+    def _on_tts_volume_change(self, value):
+        self.controller._tts.tts_volume = int(float(value))    
 
     # --------------   Main Loop   ------------
 
