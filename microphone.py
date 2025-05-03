@@ -156,7 +156,7 @@ class Controller:
                     self.app.music_list.selection_clear(0, tk.END)
                     self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                     self.app.music_list.see(idx)                  # Scroll to it
-                    self.app.play_selected_song()                 # Play the audio
+                    self.app.play_selected_song(False)                 # Play the audio
                     return
             print("Downloaded not found.")
         threading.Thread(target=_dl,daemon=True).start()
@@ -171,7 +171,7 @@ class Controller:
                 self.app.music_list.selection_clear(0, tk.END)
                 self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                 self.app.music_list.see(idx)                  # Scroll to it
-                self.app.play_selected_song()                 # Play the audio
+                self.app.play_selected_song(True)                 # Play the audio
                 return
 
 

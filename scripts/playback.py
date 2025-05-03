@@ -115,8 +115,9 @@ class Playback():
         cleanup()
         self._current_proc = None
 
-    def play_music(self, path, pyaudio_instance, output_device, listen_device, listen_enabled, music_volume):
-        self.stop_music()
+    def play_music(self, path, pyaudio_instance, output_device, listen_device, listen_enabled, music_volume, multithreaded=True):
+        if not multithreaded:
+            self.stop_music()
         self._playback_thread = threading.Thread(
             target=self._playback,
             args=(
