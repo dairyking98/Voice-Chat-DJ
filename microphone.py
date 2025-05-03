@@ -141,7 +141,7 @@ class Controller:
             name=info.get('title')+'.wav'
             for idx,(n,path) in enumerate(self.music_entries):
                 if n==name: 
-                    self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, 100, self.music_volume)
+                    self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, self.music_volume)
                     self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                     self.app.music_list.see(idx)                  # Scroll to it
                     return
@@ -227,7 +227,7 @@ class Controller:
                 text = self.tts_capture_buffer.strip()
                 cancel() # Cancel out of tts popup; clear buffer
                 if text:
-                    self._tts.play_tts(text, self.p, self.output_device, self.input_device, self.listen_device, False)
+                    self._tts.play_tts(text, self.p, self.output_device, self.listen_device, self.listen_enabled_tts)
                     print("Playing TTS:", text)
                 return
 

@@ -20,7 +20,7 @@ class Playback():
         self.stop_mic_flag     = threading.Event()
         self.mic_thread        = None
 
-    def _playback(self, path, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, listen_volume, music_volume):
+    def _playback(self, path, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, music_volume):
         # device info
         out_info = pyaudio_instance.get_device_info_by_index(sel_out_dev)
         out_ch = out_info['maxOutputChannels']
@@ -103,7 +103,7 @@ class Playback():
             chunk = convert_channels(data, 1, 1)
             stream.write(adjust_volume(chunk, music_volume))
             if listen_stream:
-                listen_stream.write(adjust_volume(chunk, listen_volume))
+                listen_stream.write(adjust_volume(chunk, music_volume))
             data = reader(MUSIC_CHUNK)
 
         # cleanup
@@ -115,14 +115,13 @@ class Playback():
         cleanup()
         self._current_proc = None
 
-    def play_music(self, path, pyaudio_instance, output_device, listen_device, listen_enabled, listen_volume, music_volume):
+    def play_music(self, path, pyaudio_instance, output_device, listen_device, listen_enabled, music_volume):
         self.stop_music()
         self._playback_thread = threading.Thread(
             target=self._playback,
             args=(
                 path, pyaudio_instance, output_device,
-                listen_device, listen_enabled,
-                listen_volume, music_volume
+                listen_device, listen_enabled, music_volume
             ),
             daemon=True
         )

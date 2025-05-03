@@ -186,7 +186,7 @@ class MainWindow(tk.Tk):
         if not sel:
             return
         track_index = sel[0]
-        self.controller._playback.play_music(self.controller.music_entries[track_index][1], self.controller.p,  self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_music, 100, self.controller.music_volume)
+        self.controller._playback.play_music(self.controller.music_entries[track_index][1], self.controller.p,  self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_music, self.controller.music_volume)
 
     
     def _stop_music(self):
