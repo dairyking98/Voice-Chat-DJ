@@ -29,6 +29,7 @@ class TTS():
         raw = os.path.join(os.getcwd(), 'tts_raw.wav')
         stereo = os.path.join(os.getcwd(), 'tts_stereo48k.wav')
 
+        self.engine.setProperty('rate', 150)
         self.engine.save_to_file(text, raw)
         self.engine.runAndWait()
         resample_wav(raw, stereo, 48000)
