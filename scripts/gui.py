@@ -22,6 +22,8 @@ class MainWindow(tk.Tk):
         self.geometry("1200x800")
 
         # TK Inputs
+        self.bind_menu = None # Bind menu
+
         self.input_device_cb = None # Input device combobox
         self.output_device_cb = None # Output device combobox
         self.tts_voice_cb = None # TTS voice combobox
@@ -56,7 +58,46 @@ class MainWindow(tk.Tk):
         file_menu = tk.Menu(menubar, tearoff=False)
         file_menu.add_command(label="Exit", command=self.quit)
         menubar.add_cascade(label="File", menu=file_menu)
+        
+        self.bind_menu = tk.Menu(menubar, tearoff=False)
+        # Binds 0 -> 9
+        for i in range(10):
+            self.bind_menu.add_command(label=f"{i} - None", command=lambda i=i: self.set_bind(i))
+        menubar.add_cascade(label="Binds", menu=self.bind_menu)
         self.config(menu=menubar)
+
+    def set_bind(self, bindNumber):
+        if self.controller.binds.get(bindNumber) is not None:
+            self.controller.binds[bindNumber] = None
+            self.bind_menu.delete(bindNumber)
+            self.bind_menu.insert_command(bindNumber, label=f"{bindNumber} - None", command=lambda: self.set_bind(bindNumber))
+            keyboard.remove_hotkey(f'ctrl+{bindNumber}') # Unbind hotkey
+            return
+
+        # get music list selction song name
+        sel = self.music_list.curselection()
+        if not sel:
+            return
+        track_index = sel[0]
+        song_name = self.controller.music_entries[track_index][0]
+        self.controller.binds[bindNumber] = song_name
+        # bind hotkey
+        keyboard.add_hotkey(f'ctrl+{bindNumber}', lambda i=bindNumber: self.controller.play_bind(bindNumber))
+        # remove command from menu and add new one
+        self.bind_menu.delete(bindNumber)
+        self.bind_menu.insert_command(bindNumber, label=f"{bindNumber} - {song_name}", command=lambda: self.set_bind(bindNumber))
+
+        self.sync_binds()
+
+    def sync_binds(self):
+        # go through all binds and update gui
+        for i in range(10):
+            if self.controller.binds.get(i) is not None:
+                self.bind_menu.delete(i)
+                self.bind_menu.insert_command(i, label=f"{i} - {self.controller.binds[i]}", command=lambda i=i: self.set_bind(i))
+            else:
+                self.bind_menu.insert_command(i, label=f"{i} - None", command=lambda i=i: self.set_bind(i))
+
 
     # --------------   Frames   ------------
 
@@ -138,7 +179,7 @@ class MainWindow(tk.Tk):
         self.music_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         ttk.Button(musicFrame, text="Refresh", command=self._refresh_music).pack(pady=5)
         self._refresh_music() # Load music list on startup
-        self.music_list.bind('<Double-Button-1>', self.play_selected_song)
+        self.music_list.bind('<Double-Button-1>', lambda e: self.play_selected_song())
 
         ttsFrame = ttk.Labelframe(paned, text="TTS", width=200)
         paned.add(ttsFrame, weight=1)
@@ -211,7 +252,7 @@ class MainWindow(tk.Tk):
         else:
             self.controller._playback.pause_music()
 
-    def play_selected_song(self, event):
+    def play_selected_song(self):
         sel = self.music_list.curselection()
         if not sel:
             return

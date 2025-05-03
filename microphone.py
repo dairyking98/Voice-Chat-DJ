@@ -65,9 +65,6 @@ class Controller:
             info = devs[self.output_device]
             print(f"[DEBUG] Routing audio → {info['name']} (index {self.output_device})")
 
-        # Bind hotkeys
-        self._start_keyboard_listeners()
-
         # Audio & mic volume popup state
         self.time_last_volume_popup = 0
         self.music_volume = 100
@@ -87,6 +84,10 @@ class Controller:
         self.listen_enabled_tts = False # Listen mode for TTS playback
 
         self.mic_pressed = False # Mic pressed state
+
+
+        # Binds config
+        self.binds = {}
 
     # --------------   Event Handlers   ------------
 
@@ -115,6 +116,12 @@ class Controller:
     def _start_keyboard_listeners(self):
         def listen():
             keyboard.add_hotkey('ctrl+tab', self.show_tts_entry_popup)
+
+            # go through 0 to 9 and make a ctrl + the number and alambda funciotn that apsses that param
+            for i in range(10):
+                keyboard.add_hotkey(f'ctrl+{i}', lambda i=i: self.play_bind(i))
+
+
             keyboard.wait()  # Keep listener alive
         threading.Thread(target=listen, daemon=True).start()
 
@@ -146,12 +153,27 @@ class Controller:
             for idx,(n,path) in enumerate(self.music_entries):
                 if re.sub(r"\s+", "", n)==re.sub(r"\s+", "", name): 
                     # self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, self.music_volume)
+                    self.app.music_list.selection_clear(0, tk.END)
                     self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                     self.app.music_list.see(idx)                  # Scroll to it
                     self.app.play_selected_song()                 # Play the audio
                     return
             print("Downloaded not found.")
         threading.Thread(target=_dl,daemon=True).start()
+
+    def play_bind(self, bindNumber):
+        if bindNumber not in self.binds:
+            return
+        bind = self.binds[bindNumber]
+        # find music entry with name
+        for idx,(n,path) in enumerate(self.music_entries):
+            if re.sub(r"\s+", "", n)==re.sub(r"\s+", "", bind): 
+                self.app.music_list.selection_clear(0, tk.END)
+                self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
+                self.app.music_list.see(idx)                  # Scroll to it
+                self.app.play_selected_song()                 # Play the audio
+                return
+
 
     def mic_down(self):
         self.mic_pressed = True
@@ -286,6 +308,12 @@ class Controller:
         # Initialize main window
         self.app = MainWindow(self)
         self.app.run()
+
+        # Initialize binds
+        self.app.sync_binds()
+
+        # Bind hotkeys
+        self._start_keyboard_listeners()
 
         self.p.terminate()
 
