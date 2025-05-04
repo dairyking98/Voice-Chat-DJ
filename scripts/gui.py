@@ -97,8 +97,6 @@ class MainWindow(tk.Tk):
             if self.controller.binds.get(i) is not None:
                 self.bind_menu.delete(i)
                 self.bind_menu.insert_command(i, label=f"{i} - {self.controller.binds[i]}", command=lambda i=i: self.set_bind(i))
-            else:
-                self.bind_menu.insert_command(i, label=f"{i} - None", command=lambda i=i: self.set_bind(i))
 
 
     # --------------   Frames   ------------
