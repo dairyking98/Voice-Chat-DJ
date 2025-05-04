@@ -10,6 +10,7 @@ import yt_dlp as youtube_dl
 import keyboard
 import mouse
 import pyttsx3
+import re
 import tkinter as tk
 from tkinter import font as tkfont, ttk, simpledialog, messagebox
 import ctypes
@@ -196,6 +197,7 @@ class MainWindow(tk.Tk):
         self.tts_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         ttk.Button(ttsFrame, text="Play TTS", command=self._play_tts).pack(side=tk.LEFT, padx=10)
         ttk.Button(ttsFrame, text="Clear TTS", command=self._clear_tts).pack(side=tk.LEFT, padx=10)
+        ttk.Button(ttsFrame, text="Save TTS", command=self._save_tts).pack(side=tk.LEFT, padx=10)
 
         self.tts_voice_list = [f"{i}: {d.name}" for i, d in enumerate(self.controller._tts.voicelist)]
 
@@ -285,6 +287,32 @@ class MainWindow(tk.Tk):
     
     def _clear_tts(self):
         self.tts_text.delete("1.0", tk.END)
+
+    def _save_tts(self):
+        text = self.tts_text.get("1.0", tk.END).strip()
+        if not text:
+            return
+        
+        # Ask user for filename
+        filename = simpledialog.askstring("Save TTS", "Enter filename:")
+        if not filename:
+            return
+        if not filename.endswith(".wav"):
+            filename += ".wav"
+
+        filename = "TTS_" + filename  
+
+        # Save TTS to file
+        self.controller._tts.save_tts(text, filename)
+
+        # Update music list
+        self._refresh_music()
+
+        for idx,(n,path) in enumerate(self.controller.music_entries):
+            if re.sub(r"\s+", "", n)==re.sub(r"\s+", "", filename): 
+                self.music_list.selection_clear(0, tk.END)
+                self.music_list.selection_set(idx)        # Select the audio item in the GUI music list
+                self.music_list.see(idx)                  # Scroll to it
 
     def _set_all_listen_modes(self, state):
         self.listen_mic.set(state)

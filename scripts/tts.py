@@ -29,7 +29,7 @@ class TTS():
         raw = os.path.join(os.getcwd(), 'tts_raw.wav')
         stereo = os.path.join(os.getcwd(), 'tts_stereo48k.wav')
 
-        self.engine.setProperty('rate', 150)
+        self.engine.setProperty('rate', 160)
         self.engine.save_to_file(text, raw)
         self.engine.runAndWait()
         resample_wav(raw, stereo, 48000)
@@ -74,6 +74,16 @@ class TTS():
         self.engine.setProperty('voice', self.tts_voice_id)
         # self.engine.setProperty('volume', self.tts_volume / 100)
         # print(f"Updated TTS voice to: {self.tts_voice_name} ({self.tts_voice_id})")
+
+    def save_tts(self, text, filename):
+        # Create wav
+        self.engine.setProperty('rate', 160)
+        self.engine.save_to_file(text, f"music/raw_{filename}")
+        self.engine.runAndWait()
+        resample_wav(f"music/raw_{filename}", f"music/{filename}", 48000)
+
+        # Delete raw wav
+        os.remove(f"music/raw_{filename}")
 
     def run(self):
         self.mainloop()

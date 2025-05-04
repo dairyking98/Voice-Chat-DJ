@@ -152,7 +152,6 @@ class Controller:
             name=info.get('title')+'.wav'
             for idx,(n,path) in enumerate(self.music_entries):
                 if re.sub(r"\s+", "", n)==re.sub(r"\s+", "", name): 
-                    # self._playback.play_music(self.music_entries[idx][1], self.p,  self.output_device, self.listen_device, self.listen_enabled_music, self.music_volume)
                     self.app.music_list.selection_clear(0, tk.END)
                     self.app.music_list.selection_set(idx)        # Select the audio item in the GUI music list
                     self.app.music_list.see(idx)                  # Scroll to it
