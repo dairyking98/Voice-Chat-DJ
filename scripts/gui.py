@@ -37,6 +37,14 @@ class MainWindow(tk.Tk):
 
         self.mic_mode_cb = None # Mic mode combobox
 
+        self.tts_popup = None # TTS popup window
+        self.tts_popup_entry = None # TTS popup entry
+        self.tts_popup_rate_slider = None # TTS rate slider
+        self.tts_popup_rate_label = None # TTS rate label
+
+        # TTS Popup state
+        self._tts_popup_rate = 160 # TTS rate
+
         # Listen mode states
         self.listen_mic = None # Listen mic flag
         self.listen_music = None # Listen music flag
@@ -231,6 +239,46 @@ class MainWindow(tk.Tk):
         self.youtube_url.pack(side=tk.LEFT, padx=5)
         ttk.Button(top, text="Download", command=self.play_youtube_url).pack(side=tk.LEFT, padx=5)
 
+
+    def open_popup(self):
+        self.tts_popup = tk.Toplevel()
+        self.tts_popup.title("TTS")
+        self.tts_popup.geometry("300x150")
+
+        label = ttk.Label(self.tts_popup, text="Enter something:")
+        label.pack(pady=(10, 0))
+
+        self.tts_popup_entry = ttk.Entry(self.tts_popup, width=40)
+        self.tts_popup_entry.pack(pady=5)
+        self.tts_popup_entry.bind("<Return>", lambda event: [self._play_tts_popup(), self._cancel_tts_popup()])
+
+        button_frame = ttk.Frame(self.tts_popup)
+        button_frame.pack(pady=10)
+
+        ok_button = ttk.Button(button_frame, text="Play", command=self._play_tts_popup)
+        ok_button.pack(side="left", padx=5)
+
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=self._cancel_tts_popup)
+        cancel_button.pack(side="left", padx=5)
+
+        rate_frame = ttk.Frame(self.tts_popup)
+        rate_frame.pack(pady=10)
+
+        self.tts_popup_rate_slider = ttk.Scale(rate_frame, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_popup_rate_change, length=250)
+        self.tts_popup_rate_slider.pack(side=tk.LEFT, padx=5)
+        self.tts_popup_rate_slider.set(self._tts_popup_rate)
+
+        # Add label showing the rate number
+        self.tts_popup_rate_label = ttk.Label(rate_frame, text=str(self._tts_popup_rate))
+        self.tts_popup_rate_label.pack(side=tk.LEFT, padx=5)
+
+        self.tts_popup.lift()
+        self.tts_popup.attributes("-topmost", True)
+        
+        # Use after_idle to delay focus setting
+        self.tts_popup.after_idle(self._set_focus)
+
+        self.tts_popup.grab_set()  # Make the popup modal
                 
     # --------------   Handlers   ------------
 
@@ -279,12 +327,39 @@ class MainWindow(tk.Tk):
         for name, _ in self.controller.music_entries:
             self.music_list.insert(tk.END, name)
 
+    # TODO implement generalized TTS input method 
+    # def _play_tts_from_input(self,input)
+
     def _play_tts(self):
         text = self.tts_text.get("1.0", tk.END).strip()
         if not text:
             return
         self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts)
+
+    # TTS POPUP -----
     
+    def _play_tts_popup(self):
+        text = self.tts_popup_entry.get().strip()
+        if not text:
+            return
+        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self._tts_popup_rate)
+
+    def _cancel_tts_popup(self):
+        self.tts_popup.destroy()
+
+    def _set_focus(self):
+        # Ensure the window is fully initialized before setting focus
+        self.tts_popup.focus_force()
+        self.tts_popup_entry.focus_set()
+
+    def _tts_popup_rate_change(self, value):
+        self._tts_popup_rate = int(float(value))
+        if self.tts_popup_rate_label:
+            # Update the label to show the current rate
+            self.tts_popup_rate_label.config(text=str(self._tts_popup_rate))
+
+    # -------
+
     def _clear_tts(self):
         self.tts_text.delete("1.0", tk.END)
 

@@ -222,78 +222,7 @@ class Controller:
         threading.Thread(target=_popup, daemon=True).start()
 
     def show_tts_entry_popup(self):
-        self.tts_capture_mode = True
-
-        root = tk.Tk()
-        root.overrideredirect(True)
-        root.attributes("-topmost", True)
-        root.grab_set()
-        root.focus_force()
-
-        popup_font = tkfont.Font(root=root, family="Segoe UI", size=14, weight="bold")
-        pad_x, pad_y = 20, 20
-
-        label = tk.Label(
-            root,
-            text="Type: ",
-            font=popup_font,
-            bg="blue", fg="white",
-            padx=pad_x, pady=pad_y
-        )
-        label.pack()
-
-        def cancel():
-            root.grab_release()
-            root.destroy()
-            self.tts_capture_mode = False
-            self.tts_capture_buffer = ""
-
-        def resize_window(text):
-            # measure new text size
-            width  = popup_font.measure(text) + pad_x * 2
-            height = popup_font.metrics("linespace") + pad_y * 2
-            sw = root.winfo_screenwidth()
-            x  = (sw - width) // 2
-            root.geometry(f"{width}x{height}+{x}+0")
-
-        def on_key(event):
-            key = event.keysym
-
-            # Edit buffer
-            if key == 'BackSpace':
-                self.tts_capture_buffer = self.tts_capture_buffer[:-1]
-            elif key == 'space':
-                self.tts_capture_buffer += ' '
-            elif event.char and len(event.char) == 1:
-                self.tts_capture_buffer += event.char
-
-            # Submit buffer
-            if key in ('Return', 'KP_Enter'):
-                text = self.tts_capture_buffer.strip()
-                cancel() # Cancel out of tts popup; clear buffer
-                if text:
-                    self._tts.play_tts(text, self.p, self.output_device, self.listen_device, self.listen_enabled_tts)
-                    print("Playing TTS:", text)
-                return
-
-            # Cancel
-            if key == 'Escape':
-                cancel() # Cancel out of tts popup; maintain buffer
-                return
-
-            # Update UI label
-            display = "Type: " + self.tts_capture_buffer
-            label.config(text=display)
-
-            # Resize popup to fit new text
-            root.update_idletasks()
-            resize_window(display)
-
-        # Initialize popup size
-        resize_window("Type: ")
-
-        root.bind("<Key>", on_key)
-        root.mainloop()
+        self.app.open_popup()
 
 
     # --------------   Main Loop   ------------
@@ -309,20 +238,20 @@ class Controller:
         self._playback = Playback()
         self._tts = TTS()
 
-        # Initialize main window
-        self.app = MainWindow(self)
-        self.app.run()
 
         # Initialize binds
-        self.app.sync_binds()
+        # TODO get binds from file and set it to binds variable first
+        # self.app.sync_binds()
 
         # Bind hotkeys
         self._start_keyboard_listeners()
 
-        self.p.terminate()
+        # Initialize main window
+        self.app = MainWindow(self)
+        self.app.run()
 
-    
-        
+        # Cleanup
+        self.p.terminate()
 
 # Start main loop
 if __name__ == '__main__':

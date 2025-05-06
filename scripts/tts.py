@@ -20,7 +20,7 @@ class TTS():
         self.tts_voice_name = next((v.name for v in self.voicelist if v.id == self.tts_voice_id), '')
         self.tts_volume = int(self.engine.getProperty('volume') * 100)
 
-    def play_tts(self, text, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled):
+    def play_tts(self, text, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, ttsRate=160):
         """
         1) Save raw TTS to WAV
         2) Resample to stereo 48 kHz
@@ -29,7 +29,7 @@ class TTS():
         raw = os.path.join(os.getcwd(), 'tts_raw.wav')
         stereo = os.path.join(os.getcwd(), 'tts_stereo48k.wav')
 
-        self.engine.setProperty('rate', 160)
+        self.engine.setProperty('rate', ttsRate)
         self.engine.save_to_file(text, raw)
         self.engine.runAndWait()
         resample_wav(raw, stereo, 48000)
