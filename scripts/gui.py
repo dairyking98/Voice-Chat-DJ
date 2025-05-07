@@ -265,6 +265,11 @@ class MainWindow(tk.Tk):
 
 
     def open_popup(self):
+        # If tts window is already open, bring it to the front and focus
+        if self.tts_popup and self.tts_popup.winfo_exists():
+            self._set_focus()
+            return
+
         self.tts_popup = tk.Toplevel()
         self.tts_popup.title("TTS")
         self.tts_popup.geometry("300x150")
@@ -372,6 +377,7 @@ class MainWindow(tk.Tk):
 
     def _cancel_tts_popup(self):
         self.tts_popup.destroy()
+        self.tts_popup = None  # Reset the popup reference
 
     def _set_focus(self):
         # Ensure the window is fully initialized before setting focus
