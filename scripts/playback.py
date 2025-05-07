@@ -130,6 +130,7 @@ class Playback():
 
     ### MIC PASSTHROUGH ###
     def switch_to_mic(self, p, sel_in_dev, sel_out_dev, sel_listen_dev, listen_mic_enabled, mic_volume):
+        self.stop_mic_flag.clear()
         if self.mic_thread and self.mic_thread.is_alive(): return
         def _mic_loop():
             self.stop_mic_flag.clear()
@@ -148,10 +149,10 @@ class Playback():
                                 frames_per_buffer=MIC_CHUNK)
                 except: debug("mic-listen fail")
 
-            while not self.stop_mic_flag.is_set():
+            while True:
                 data=in_s.read(MIC_CHUNK,exception_on_overflow=False)
                 data=convert_channels(data,MIC_CHANNELS,out_ch)
-                data=adjust_volume(data,mic_volume)
+                data=adjust_volume(data,0 if self.stop_mic_flag.is_set() else mic_volume)
                 out_s1.write(data)
                 if out_s2: out_s2.write(data)
 
@@ -165,7 +166,6 @@ class Playback():
     def stop_mic(self):
         if self.mic_thread and self.mic_thread.is_alive():
             self.stop_mic_flag.set()
-            self.mic_thread.join(timeout=1)
 
 
     def pause_music(self):
