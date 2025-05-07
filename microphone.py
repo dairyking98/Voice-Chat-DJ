@@ -19,6 +19,7 @@ import tkinter as tk
 import yt_dlp as youtube_dl
 from tkinter import font as tkfont
 from pynput import mouse as pymouse
+from openai import OpenAI
 
 # Custom classes
 from scripts.playback import Playback
@@ -29,9 +30,12 @@ from scripts.utils import getTime
 from config import (
     VIRTUAL_CABLE_RECORD_NAME,
     MUSIC_DIR, YOUTUBE_DIR, BINDS_DIR, DEBUG,
-    DB_DIR, SETTINGS_DB_PATH
+    DB_DIR, SETTINGS_DB_PATH,
+
+    TEST_OPENAI_API_KEY
 )
 
+client = OpenAI(api_key=TEST_OPENAI_API_KEY)
 
 class Controller:
 
@@ -305,6 +309,13 @@ class Controller:
         # Need to create a method to update GUI dynamically
         subprocess.Popen([sys.executable, __file__])
         os._exit(0)
+
+    def ai(self, prompt):
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
     
     def run(self):
         # Initialize audio & mic volume scroll

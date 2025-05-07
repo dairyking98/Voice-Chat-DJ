@@ -287,6 +287,9 @@ class MainWindow(tk.Tk):
         ok_button = ttk.Button(button_frame, text="Play", command=self._play_tts_popup)
         ok_button.pack(side="left", padx=5)
 
+        ok_ai_button = ttk.Button(button_frame, text="Query AI", command=self._play_ai_tts_popup)
+        ok_ai_button.pack(side="left", padx=5)
+
         cancel_button = ttk.Button(button_frame, text="Cancel", command=self._cancel_tts_popup)
         cancel_button.pack(side="left", padx=5)
 
@@ -375,6 +378,12 @@ class MainWindow(tk.Tk):
             return
         self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self._tts_popup_rate)
 
+    def _play_ai_tts_popup(self):
+        text = self.controller.ai(self.tts_popup_entry.get().strip())
+        if not text:
+            return
+        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self._tts_popup_rate)
+
     def _cancel_tts_popup(self):
         self.tts_popup.destroy()
         self.tts_popup = None  # Reset the popup reference
@@ -386,7 +395,7 @@ class MainWindow(tk.Tk):
 
     def _tts_popup_rate_change(self, value):
         self._tts_popup_rate = int(float(value))
-        if self.tts_popup_rate_label:
+        if self.tts_popup_rate_label and self.tts_popup_rate_label.winfo_exists():
             # Update the label to show the current rate
             self.tts_popup_rate_label.config(text=str(self._tts_popup_rate))
 
