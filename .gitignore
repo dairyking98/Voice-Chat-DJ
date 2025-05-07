@@ -18,3 +18,5 @@ __pycache__/
 
 tts_raw.wav
 tts_stereo48k.wav
+
+.env

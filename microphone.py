@@ -20,6 +20,8 @@ import yt_dlp as youtube_dl
 from tkinter import font as tkfont
 from pynput import mouse as pymouse
 from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()
 
 # Custom classes
 from scripts.playback import Playback
@@ -31,9 +33,9 @@ from config import (
     VIRTUAL_CABLE_RECORD_NAME,
     MUSIC_DIR, YOUTUBE_DIR, BINDS_DIR, DEBUG,
     DB_DIR, SETTINGS_DB_PATH,
-
-    TEST_OPENAI_API_KEY
 )
+
+TEST_OPENAI_API_KEY = os.getenv("TEST_OPENAI_API_KEY")
 
 client = OpenAI(api_key=TEST_OPENAI_API_KEY)
 

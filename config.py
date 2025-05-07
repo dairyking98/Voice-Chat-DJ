@@ -29,6 +29,3 @@ SETTINGS_DB_PATH = os.path.join(DB_DIR, 'settings.json')
 os.makedirs(MUSIC_DIR,   exist_ok=True)
 os.makedirs(YOUTUBE_DIR, exist_ok=True)
 os.makedirs(BINDS_DIR,   exist_ok=True)
-
-# Temporary test OpenAI API key
-TEST_OPENAI_API_KEY = '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'
