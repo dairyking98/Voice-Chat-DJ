@@ -42,8 +42,11 @@ class MainWindow(tk.Tk):
         self.tts_popup_rate_slider = None # TTS rate slider
         self.tts_popup_rate_label = None # TTS rate label
 
+        self.tts_mode_cb = None # TTS mode combobox
+
         # TTS Popup state
         self._tts_popup_rate = 160 # TTS rate
+        self.tts_mode = None # TTS mode
 
         # Listen mode states
         self.listen_mic = None # Listen mic flag
@@ -272,26 +275,31 @@ class MainWindow(tk.Tk):
 
         self.tts_popup = tk.Toplevel()
         self.tts_popup.title("TTS")
-        self.tts_popup.geometry("300x150")
+        self.tts_popup.geometry("400x200")
 
         label = ttk.Label(self.tts_popup, text="Enter something:")
         label.pack(pady=(10, 0))
 
         self.tts_popup_entry = ttk.Entry(self.tts_popup, width=40)
-        self.tts_popup_entry.pack(pady=5)
+        # self.tts_popup_entry.pack(pady=5)
+        self.tts_popup_entry.pack(fill="x", expand=True, padx = 20)
         self.tts_popup_entry.bind("<Return>", lambda event: [self._play_tts_popup(), self._cancel_tts_popup()])
 
         button_frame = ttk.Frame(self.tts_popup)
         button_frame.pack(pady=10)
 
         ok_button = ttk.Button(button_frame, text="Play", command=self._play_tts_popup)
-        ok_button.pack(side="left", padx=5)
-
-        ok_ai_button = ttk.Button(button_frame, text="Query AI", command=self._play_ai_tts_popup)
-        ok_ai_button.pack(side="left", padx=5)
+        ok_button.pack(side=tk.LEFT, padx=5)
+        
 
         cancel_button = ttk.Button(button_frame, text="Cancel", command=self._cancel_tts_popup)
-        cancel_button.pack(side="left", padx=5)
+        cancel_button.pack(side=tk.LEFT, padx=5)
+
+        # TTS mode dropdown
+        self.tts_mode_cb = ttk.Combobox(button_frame, values=["TTS", "AI TTS"], state="readonly", width=20)
+        self.tts_mode_cb.current(1 if self.tts_mode == "AI TTS" else 0)
+        self.tts_mode_cb.pack(side=tk.RIGHT, padx=5)
+        self.tts_mode_cb.bind('<<ComboboxSelected>>', self._on_tts_mode_change)
 
         rate_frame = ttk.Frame(self.tts_popup)
         rate_frame.pack(pady=10)
@@ -373,9 +381,16 @@ class MainWindow(tk.Tk):
     # TTS POPUP -----
     
     def _play_tts_popup(self):
-        text = self.tts_popup_entry.get().strip()
+        if self.tts_mode_cb.get() == "TTS":
+            text = self.tts_popup_entry.get().strip()
+        elif self.tts_mode_cb.get() == "AI TTS":
+            text = self.controller.ai(self.tts_popup_entry.get().strip())
+        else:
+            return
+
         if not text:
             return
+
         self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self._tts_popup_rate)
 
     def _play_ai_tts_popup(self):
@@ -398,6 +413,9 @@ class MainWindow(tk.Tk):
         if self.tts_popup_rate_label and self.tts_popup_rate_label.winfo_exists():
             # Update the label to show the current rate
             self.tts_popup_rate_label.config(text=str(self._tts_popup_rate))
+
+    def _on_tts_mode_change(self, event):
+        self.tts_mode = self.tts_mode_cb.get()
 
     # -------
 
