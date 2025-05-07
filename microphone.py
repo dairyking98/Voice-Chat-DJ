@@ -83,6 +83,7 @@ class Controller:
         # TTS state
         self.tts_capture_mode = False
         self.tts_capture_buffer = ""
+        self._tts_rate = 160 # Default TTS rate
 
         # Audio playback state
         self._playback = None
@@ -274,6 +275,7 @@ class Controller:
         self.listen_enabled_mic = db.get("listen_enabled_mic", False)
         self.listen_enabled_music = db.get("listen_enabled_music", False)
         self.listen_enabled_tts = db.get("listen_enabled_tts", False)
+        self._tts_rate = db.get("tts_rate", 160)
         self.binds = db.get("binds", {})
 
         # Non-controller settings
@@ -291,6 +293,7 @@ class Controller:
             "listen_enabled_music": self.listen_enabled_music,
             "listen_enabled_tts": self.listen_enabled_tts,
             "binds": self.binds,
+            "tts_rate": self._tts_rate,
 
             # Non-controller settings
             "tts_volume": self._tts.tts_volume,

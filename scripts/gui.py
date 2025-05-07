@@ -20,7 +20,7 @@ class MainWindow(tk.Tk):
         super().__init__()
         self.controller = controller
         self.title("VCDJ")
-        self.geometry("1200x800")
+        self.geometry("1300x800")
 
         # TK Inputs
         self.bind_menu = None # Bind menu
@@ -39,13 +39,16 @@ class MainWindow(tk.Tk):
 
         self.tts_popup = None # TTS popup window
         self.tts_popup_entry = None # TTS popup entry
-        self.tts_popup_rate_slider = None # TTS rate slider
-        self.tts_popup_rate_label = None # TTS rate label
+        self.tts_popup_rate_slider = None # TTS rate slider for popup
+        self.tts_popup_rate_label = None # TTS rate label for popup
+
+        self.tts_rate_slider = None # TTS rate slider for main window
+        self.tts_rate_label = None # TTS rate label for main window
 
         self.tts_mode_cb = None # TTS mode combobox
 
         # TTS Popup state
-        self._tts_popup_rate = 160 # TTS rate
+        self._tts_popup_rate = 160 # TTS rate for popup window
         self.tts_mode = None # TTS mode
 
         # Listen mode states
@@ -241,6 +244,18 @@ class MainWindow(tk.Tk):
         self.tts_voice_cb = ttk.Combobox(ttsFrame, values=self.tts_voice_list, state="readonly", width=60)
         self.tts_voice_cb.pack(side=tk.LEFT, padx=5)
         self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
+        self.tts_voice_cb.current(0)
+
+
+        # Add tts rate slider
+        ttk.Label(ttsFrame, text="TTS Rate:").pack(side=tk.LEFT)
+        self.tts_rate_slider = ttk.Scale(ttsFrame, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_rate_change, length=250)
+        self.tts_rate_slider.pack(side=tk.LEFT, padx=5)
+        self.tts_rate_slider.set(self.controller._tts_rate)
+
+        self.tts_rate_label = ttk.Label(ttsFrame, text=str(self.controller._tts_rate))
+        self.tts_rate_label.pack(side=tk.LEFT, padx=5)
+
 
     def _create_play_pause_controls_frame(self):
         top = ttk.Frame(self, padding=10)
@@ -369,14 +384,11 @@ class MainWindow(tk.Tk):
         for name, _ in self.controller.music_entries:
             self.music_list.insert(tk.END, name)
 
-    # TODO implement generalized TTS input method 
-    # def _play_tts_from_input(self,input)
-
     def _play_tts(self):
         text = self.tts_text.get("1.0", tk.END).strip()
         if not text:
             return
-        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts)
+        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self.controller._tts_rate)
 
     # TTS POPUP -----
     
@@ -413,6 +425,14 @@ class MainWindow(tk.Tk):
         if self.tts_popup_rate_label and self.tts_popup_rate_label.winfo_exists():
             # Update the label to show the current rate
             self.tts_popup_rate_label.config(text=str(self._tts_popup_rate))
+
+    def _tts_rate_change(self, value):
+        self.controller._tts_rate = int(float(value))
+        if self.tts_rate_label and self.tts_rate_label.winfo_exists():
+            # Update the label to show the current rate
+            self.tts_rate_label.config(text=str(self.controller._tts_rate))
+
+        self.controller.push_settings()  # Save current settings to db
 
     def _on_tts_mode_change(self, event):
         self.tts_mode = self.tts_mode_cb.get()
