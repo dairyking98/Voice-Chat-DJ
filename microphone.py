@@ -7,14 +7,16 @@ import time
 import subprocess
 import array
 import pyaudio
-import yt_dlp as youtube_dl
 import keyboard
 import mouse
 import pyttsx3
-import tkinter as tk
-from tkinter import font as tkfont
 import ctypes
 import re
+import json
+import os
+import tkinter as tk
+import yt_dlp as youtube_dl
+from tkinter import font as tkfont
 from pynput import mouse as pymouse
 
 # Custom classes
@@ -25,7 +27,8 @@ from scripts.utils import getTime
 
 from config import (
     VIRTUAL_CABLE_RECORD_NAME,
-    MUSIC_DIR, YOUTUBE_DIR, BINDS_DIR, DEBUG
+    MUSIC_DIR, YOUTUBE_DIR, BINDS_DIR, DEBUG,
+    DB_DIR, SETTINGS_DB_PATH
 )
 
 
@@ -199,6 +202,8 @@ class Controller:
         elif mode == "On":
             self.mic_down()
 
+        self.push_settings()  # Save current settings to db
+
     # --------------   UI Helpers   ------------
 
     def show_popup(self, text, duration=1000):
@@ -224,6 +229,66 @@ class Controller:
     def show_tts_entry_popup(self):
         self.app.open_popup()
 
+    # --------------   DB Actions   ------------
+    
+    def _initialize_db(self):
+        # Create db directory if it doesn't exist
+        if not os.path.exists(DB_DIR):
+            os.makedirs(DB_DIR)
+
+        # Create db if it doesn't exist
+        if not os.path.exists(SETTINGS_DB_PATH):
+            with open(SETTINGS_DB_PATH, 'w') as f:
+                json.dump({}, f)
+            self.push_settings()  # Save current settings to db
+
+    def _load_db(self):
+        # Load db
+        with open(SETTINGS_DB_PATH, 'r') as f:
+            return json.load(f)
+
+    def update_db(self, updates: dict):
+        # Update db given a dictionary of updates
+        data = self._load_db()
+        data.update(updates)
+        with open(SETTINGS_DB_PATH, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def pull_settings(self):
+        # Load settings from db
+        db = self._load_db()
+        self.mic_mode = db.get("mic_mode", "Push to Talk")
+        self.music_volume = db.get("music_volume", 100)
+        self.mic_volume = db.get("mic_volume", 100)
+        self.input_device = db.get("input_device", 0)
+        self.listen_device = db.get("listen_device", None)
+        self.listen_enabled_mic = db.get("listen_enabled_mic", False)
+        self.listen_enabled_music = db.get("listen_enabled_music", False)
+        self.listen_enabled_tts = db.get("listen_enabled_tts", False)
+        self.binds = db.get("binds", {})
+
+        # Non-controller settings
+        self._tts.tts_volume = db.get("tts_volume", 100)
+    
+    def push_settings(self):
+        # Save current settings to db
+        updates = {
+            "mic_mode": self.mic_mode,
+            "music_volume": self.music_volume,
+            "mic_volume": self.mic_volume,
+            "input_device": self.input_device,
+            "listen_device": self.listen_device,
+            "listen_enabled_mic": self.listen_enabled_mic,
+            "listen_enabled_music": self.listen_enabled_music,
+            "listen_enabled_tts": self.listen_enabled_tts,
+            "binds": self.binds,
+
+            # Non-controller settings
+            "tts_volume": self._tts.tts_volume,
+        }
+        
+        self.update_db(updates)
+            
 
     # --------------   Main Loop   ------------
     
@@ -238,13 +303,14 @@ class Controller:
         self._playback = Playback()
         self._tts = TTS()
 
-
-        # Initialize binds
-        # TODO get binds from file and set it to binds variable first
-        # self.app.sync_binds()
-
         # Bind hotkeys
         self._start_keyboard_listeners()
+        
+        # Initialize db if it doesn't exist
+        self._initialize_db()
+
+        # Load settings from db
+        self.pull_settings()  
 
         # Initialize main window
         self.app = MainWindow(self)

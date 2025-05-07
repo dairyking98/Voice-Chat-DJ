@@ -22,6 +22,8 @@ SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 MUSIC_DIR    = os.path.join(SCRIPT_DIR, 'music')
 YOUTUBE_DIR  = os.path.join(SCRIPT_DIR, 'youtube')
 BINDS_DIR    = os.path.join(SCRIPT_DIR, 'binds')
+DB_DIR = os.path.join(SCRIPT_DIR, 'db')
+SETTINGS_DB_PATH = os.path.join(DB_DIR, 'settings.json')
 
 # Ensure directories exist
 os.makedirs(MUSIC_DIR,   exist_ok=True)

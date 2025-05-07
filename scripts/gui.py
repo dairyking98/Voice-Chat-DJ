@@ -62,6 +62,8 @@ class MainWindow(tk.Tk):
         self._create_play_pause_controls_frame()
         self._create_media_selection_frame()
 
+        self.sync_binds()
+
     # --------------   Toolbar   ------------
 
     def _create_menu(self):
@@ -100,12 +102,16 @@ class MainWindow(tk.Tk):
 
         self.sync_binds()
 
+        # Save current settings to db
+        self.controller.push_settings()
+
     def sync_binds(self):
-        # go through all binds and update gui
+        # Update GUI for binds to reflect current state
         for i in range(10):
-            if self.controller.binds.get(i) is not None:
+            if self.controller.binds.get(str(i)) is not None:
                 self.bind_menu.delete(i)
-                self.bind_menu.insert_command(i, label=f"{i} - {self.controller.binds[i]}", command=lambda i=i: self.set_bind(i))
+                self.bind_menu.insert_command(i, label=f"{i} - {self.controller.binds.get(str(i))}", command=lambda i=i: self.set_bind(i))
+                keyboard.add_hotkey(f'ctrl+{str(i)}', lambda i=str(i): self.controller.play_bind(str(i)))
 
 
     # --------------   Frames   ------------
@@ -126,9 +132,14 @@ class MainWindow(tk.Tk):
         self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly", width=40)
         self.input_device_cb.pack(side=tk.LEFT, padx=5)
         self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
-        self.input_device_cb.current(0) # Set default mic device
 
-        # ------ SPEAKER OUT ------
+        # Select the current input device in the combobox
+        for idx, val in enumerate(self.input_devs):
+            if val.startswith(f"{self.controller.input_device}:"):
+                self.input_device_cb.current(idx)  # Set combobox selection
+                break
+
+        # ------ SPEAK (LISTEN) OUT ------
         p = self.controller.p
         devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
                 if p.get_device_info_by_index(i)['maxOutputChannels'] > 0]
@@ -141,12 +152,18 @@ class MainWindow(tk.Tk):
         self.output_device_cb.pack(side=tk.LEFT, padx=5)
         self.output_device_cb.bind('<<ComboboxSelected>>', self._on_output_device_change)
 
+        # Select the current listen device in the combobox
+        for idx, val in enumerate(self.output_devs):
+            if val.startswith(f"{self.controller.listen_device}:"):
+                self.output_device_cb.current(idx)  # Set combobox selection
+                break
+
 
         # ----- LISTEN MODES -----
 
-        self.listen_mic = tk.BooleanVar(value=False)
-        self.listen_music = tk.BooleanVar(value=False)
-        self.listen_tts = tk.BooleanVar(value=False)
+        self.listen_mic = tk.BooleanVar(value=self.controller.listen_enabled_mic)
+        self.listen_music = tk.BooleanVar(value=self.controller.listen_enabled_music)
+        self.listen_tts = tk.BooleanVar(value=self.controller.listen_enabled_tts)
 
         ttk.Button(top, text="None", command=lambda: self._set_all_listen_modes(False)).pack(side=tk.RIGHT, padx=2)
         ttk.Button(top, text="All", command=lambda: self._set_all_listen_modes(True)).pack(side=tk.RIGHT, padx=2)
@@ -177,13 +194,18 @@ class MainWindow(tk.Tk):
         self.tts_volume_slider.pack(side=tk.LEFT, padx=5)
         self.tts_volume_slider.set(self.controller._tts.tts_volume)
 
-        # ADD LABEL AND MULTISELECT FOR MIC MODE OFF PSUH TO TALK OR ON
         ttk.Label(top, text="Mic Mode:").pack(side=tk.LEFT)
         self.mic_mode = tk.StringVar(value="Push to Talk")
         self.mic_mode_cb = ttk.Combobox(top, values=["Off", "On", "Push to Talk"], state="readonly", width=20)
         self.mic_mode_cb.current(2)
         self.mic_mode_cb.pack(side=tk.LEFT, padx=5)
         self.mic_mode_cb.bind('<<ComboboxSelected>>', lambda e: self.controller.set_mic_mode(self.mic_mode_cb.get()))
+
+        # Select current mic mode in the combobox
+        for idx, val in enumerate(["Off", "On", "Push to Talk"]):
+            if val == self.controller.mic_mode:
+                self.mic_mode_cb.current(idx)
+                break
 
     
     def _create_media_selection_frame(self):
@@ -286,6 +308,7 @@ class MainWindow(tk.Tk):
         dev_id = self.input_device_cb.get()
         dev_idx = dev_id.split(":")[0]
         self.controller.input_device = int(dev_idx)
+        self.controller.push_settings()  # Save current settings to db
 
     def _on_tts_voice_change(self, event):
         voice_id = self.tts_voice_cb.get()
@@ -302,6 +325,7 @@ class MainWindow(tk.Tk):
         dev_id = self.output_device_cb.get()
         dev_idx = dev_id.split(":")[0]
         self.controller.listen_device = int(dev_idx)
+        self.controller.push_settings()  # Save current settings to db
 
     def _pause_resume_music(self):
         # Toggle pause flag
@@ -399,6 +423,7 @@ class MainWindow(tk.Tk):
         self.controller.listen_enabled_mic = self.listen_mic.get()
         self.controller.listen_enabled_music = self.listen_music.get()
         self.controller.listen_enabled_tts = self.listen_tts.get()
+        self.controller.push_settings()  # Save current settings to db
 
     def play_youtube_url(self):
         url = self.youtube_url.get().strip()
@@ -407,12 +432,15 @@ class MainWindow(tk.Tk):
 
     def _on_music_volume_change(self, value):
         self.controller.music_volume = int(float(value))
+        self.controller.push_settings()  # Save current settings to db
     
     def _on_mic_volume_change(self, value):
         self.controller.mic_volume = int(float(value))
+        self.controller.push_settings()  # Save current settings to db
     
     def _on_tts_volume_change(self, value):
         self.controller._tts.tts_volume = int(float(value))    
+        self.controller.push_settings()  # Save current settings to db
 
     # --------------   Main Loop   ------------
 
