@@ -69,6 +69,8 @@ class MainWindow(tk.Tk):
     def _create_menu(self):
         menubar = tk.Menu(self)
         file_menu = tk.Menu(menubar, tearoff=False)
+        file_menu.add_command(label="Reset Settings", command=self.reset_settings)
+        file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
         menubar.add_cascade(label="File", menu=file_menu)
         
@@ -443,6 +445,14 @@ class MainWindow(tk.Tk):
         self.controller.push_settings()  # Save current settings to db
 
     # --------------   Main Loop   ------------
+
+    def reset_settings(self):
+        # Confirm reset
+        if not messagebox.askyesno("Reset Settings", "Are you sure you want to reset settings to default?"):
+            return
+
+        # Reset settings to default values and restart program
+        self.controller.reset()
 
     def run(self):
         self.mainloop()

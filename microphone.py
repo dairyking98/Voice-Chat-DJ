@@ -14,6 +14,7 @@ import ctypes
 import re
 import json
 import os
+import sys
 import tkinter as tk
 import yt_dlp as youtube_dl
 from tkinter import font as tkfont
@@ -244,6 +245,8 @@ class Controller:
 
     def _load_db(self):
         # Load db
+        if not os.path.exists(SETTINGS_DB_PATH):
+            return {}
         with open(SETTINGS_DB_PATH, 'r') as f:
             return json.load(f)
 
@@ -291,6 +294,17 @@ class Controller:
             
 
     # --------------   Main Loop   ------------
+
+    def reset(self):
+        # Delete db file
+        if SETTINGS_DB_PATH and os.path.exists(SETTINGS_DB_PATH):
+            os.remove(SETTINGS_DB_PATH)
+
+        # Restart program to reload settings
+        # TODO: Currently I only have a way to update all the GUI on init in gui.py so i resort to restarting the program.
+        # Need to create a method to update GUI dynamically
+        subprocess.Popen([sys.executable, __file__])
+        os._exit(0)
     
     def run(self):
         # Initialize audio & mic volume scroll
