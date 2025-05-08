@@ -375,7 +375,7 @@ class Controller:
         self.mic_listen()
 
         # Initialize single instances
-        self._playback = Playback()
+        self._playback = Playback(self)
         self._tts = TTS()
 
         # Bind hotkeys

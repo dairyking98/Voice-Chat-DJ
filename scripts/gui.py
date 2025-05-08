@@ -47,6 +47,10 @@ class MainWindow(tk.Tk):
 
         self.tts_mode_cb = None # TTS mode combobox
 
+        self.music_volume_label = None # Music volume label
+        self.mic_volume_label = None # Mic volume label
+        self.tts_volume_label = None # TTS volume label
+
         # TTS Popup state
         self._tts_popup_rate = 160 # TTS rate for popup window
         self.tts_mode = None # TTS mode
@@ -62,11 +66,18 @@ class MainWindow(tk.Tk):
         # Toolbar
         self._create_menu()
 
+        self.topFrame = ttk.Frame(self, padding=10)
+        self.topFrame.pack(side=tk.TOP, fill=tk.X)
+
+        self.bottomFrame = ttk.Frame(self, padding=10)
+        self.bottomFrame.pack(side=tk.TOP, fill=tk.X)
+
+
         # Frames
         self._create_device_selection_frame()
         self._create_volume_frame()
-        self._create_play_pause_controls_frame()
-        self._create_media_selection_frame()
+        self._create_tts_frame()
+        self._create_media_playback_frame()
 
         self.sync_binds()
 
@@ -125,8 +136,20 @@ class MainWindow(tk.Tk):
     # --------------   Frames   ------------
 
     def _create_device_selection_frame(self):
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill=tk.X)
+
+        # Add labelframe using grid (not pack)
+        frame = ttk.Frame(self.topFrame, padding=5)
+        frame.pack(side=tk.LEFT, anchor='n') 
+
+        labelframe = ttk.Labelframe(frame, text="Audio Devices", padding=5)
+        labelframe.pack(side=tk.LEFT, anchor='n') 
+
+        spacing = 7
+
+        # Content inside labelframe
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(spacing, spacing))
+        simpleSubframeDiv.pack_propagate(False)
 
         # ------ MIC IN ------
         p = self.controller.p
@@ -136,9 +159,9 @@ class MainWindow(tk.Tk):
         # Format list of devices as "index: name"
         self.input_devs = [f"{i}: {d['name']}" for i, d in devs]
 
-        ttk.Label(top, text="Mic In:").pack(side=tk.LEFT)
-        self.input_device_cb = ttk.Combobox(top, values=self.input_devs, state="readonly", width=40)
-        self.input_device_cb.pack(side=tk.LEFT, padx=5)
+        ttk.Label(simpleSubframeDiv, text="Mic In").pack(fill=tk.X)
+        self.input_device_cb = ttk.Combobox(simpleSubframeDiv, values=self.input_devs, state="readonly", width=40)
+        self.input_device_cb.pack(side=tk.LEFT)
         self.input_device_cb.bind('<<ComboboxSelected>>', self._on_device_change)
 
         # Select the current input device in the combobox
@@ -148,6 +171,9 @@ class MainWindow(tk.Tk):
                 break
 
         # ------ SPEAK (LISTEN) OUT ------
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(spacing, spacing))
+        simpleSubframeDiv.pack_propagate(False)  # Prevent frame from resizing to fit contents
         p = self.controller.p
         devs = [(i, p.get_device_info_by_index(i)) for i in range(p.get_device_count())
                 if p.get_device_info_by_index(i)['maxOutputChannels'] > 0]
@@ -155,9 +181,9 @@ class MainWindow(tk.Tk):
         # Format list of devices as "index: name"
         self.output_devs = [f"{i}: {d['name']}" for i, d in devs]
 
-        ttk.Label(top, text="Speaker Out (Listen):").pack(side=tk.LEFT)
-        self.output_device_cb = ttk.Combobox(top, values=self.output_devs, state="readonly", width=40)
-        self.output_device_cb.pack(side=tk.LEFT, padx=5)
+        ttk.Label(simpleSubframeDiv, text="Speaker Out (Listen)").pack(fill=tk.X)
+        self.output_device_cb = ttk.Combobox(simpleSubframeDiv, values=self.output_devs, state="readonly", width=40)
+        self.output_device_cb.pack(side=tk.LEFT)
         self.output_device_cb.bind('<<ComboboxSelected>>', self._on_output_device_change)
 
         # Select the current listen device in the combobox
@@ -166,6 +192,9 @@ class MainWindow(tk.Tk):
                 self.output_device_cb.current(idx)  # Set combobox selection
                 break
 
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X,pady=(spacing, spacing))
+        simpleSubframeDiv.pack_propagate(False)  # Prevent frame from resizing to fit contents
 
         # ----- LISTEN MODES -----
 
@@ -173,41 +202,32 @@ class MainWindow(tk.Tk):
         self.listen_music = tk.BooleanVar(value=self.controller.listen_enabled_music)
         self.listen_tts = tk.BooleanVar(value=self.controller.listen_enabled_tts)
 
-        ttk.Button(top, text="None", command=lambda: self._set_all_listen_modes(False)).pack(side=tk.RIGHT, padx=2)
-        ttk.Button(top, text="All", command=lambda: self._set_all_listen_modes(True)).pack(side=tk.RIGHT, padx=2)
+        
+        ttk.Label(simpleSubframeDiv, text="Listen Mode").pack(fill=tk.X)
+        ttk.Checkbutton(simpleSubframeDiv, text="Music", variable=self.listen_music, command=self._on_listen_mode_change).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Checkbutton(simpleSubframeDiv, text="Mic", variable=self.listen_mic, command=self._on_listen_mode_change).pack(side=tk.LEFT, padx=2)
+        ttk.Checkbutton(simpleSubframeDiv, text="TTS", variable=self.listen_tts, command=self._on_listen_mode_change).pack(side=tk.LEFT, padx=2)
 
-        ttk.Checkbutton(top, text="TTS", variable=self.listen_tts, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
-        ttk.Checkbutton(top, text="Music", variable=self.listen_music, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
-        ttk.Checkbutton(top, text="Mic", variable=self.listen_mic, command=self._on_listen_mode_change).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(simpleSubframeDiv, text="All", width=6, command=lambda: self._set_all_listen_modes(True)).pack(side=tk.LEFT, padx=4)
+        ttk.Button(simpleSubframeDiv, text="None", width=6, command=lambda: self._set_all_listen_modes(False)).pack(side=tk.LEFT, padx=4)
 
-        ttk.Label(top, text="Listen Mode: ").pack(side=tk.RIGHT, padx=5)
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
+        simpleSubframeDiv.pack_propagate(False)
 
-    def _create_volume_frame(self):
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill=tk.X)
-
-        # create a volume slider for each volume type (music_volume, mic_volume, tts_volume)
-        ttk.Label(top, text="Music Volume:").pack(side=tk.LEFT)
-        self.music_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_music_volume_change)
-        self.music_volume_slider.pack(side=tk.LEFT, padx=5)
-        self.music_volume_slider.set(self.controller.music_volume)
-
-        ttk.Label(top, text="Mic Volume:").pack(side=tk.LEFT)
-        self.mic_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_mic_volume_change)
-        self.mic_volume_slider.pack(side=tk.LEFT, padx=5)
-        self.mic_volume_slider.set(self.controller.mic_volume)
-
-        ttk.Label(top, text="TTS Volume:").pack(side=tk.LEFT)
-        self.tts_volume_slider = ttk.Scale(top, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_tts_volume_change)
-        self.tts_volume_slider.pack(side=tk.LEFT, padx=5)
-        self.tts_volume_slider.set(self.controller._tts.tts_volume)
-
-        ttk.Label(top, text="Mic Mode:").pack(side=tk.LEFT)
-        self.mic_mode = tk.StringVar(value="Push to Talk")
-        self.mic_mode_cb = ttk.Combobox(top, values=["Off", "On", "Push to Talk"], state="readonly", width=20)
-        self.mic_mode_cb.current(2)
-        self.mic_mode_cb.pack(side=tk.LEFT, padx=5)
+        ttk.Label(simpleSubframeDiv, text="Mic Mode").pack(fill=tk.X)
+        modeToId = {
+            "Off": 0,
+            "On": 1,
+            "Push to Talk": 2
+        }
+        self.mic_mode_cb = ttk.Combobox(simpleSubframeDiv, values=["Off", "On", "Push to Talk"], state="readonly", width=20)
+        self.mic_mode_cb.current(modeToId[self.controller.mic_mode])  # Set combobox selection
+        self.mic_mode_cb.pack(side=tk.LEFT)
         self.mic_mode_cb.bind('<<ComboboxSelected>>', lambda e: self.controller.set_mic_mode(self.mic_mode_cb.get()))
+
+        # Set current mic mode
+        self.controller.set_mic_mode(self.mic_mode_cb.get())
 
         # Select current mic mode in the combobox
         for idx, val in enumerate(["Off", "On", "Push to Talk"]):
@@ -215,59 +235,158 @@ class MainWindow(tk.Tk):
                 self.mic_mode_cb.current(idx)
                 break
 
+    def _create_volume_frame(self):
+        frame = ttk.Frame(self.topFrame, padding=5)
+        frame.pack(side=tk.LEFT, anchor='n') 
+
+        labelframe = ttk.Labelframe(frame, text="Volume", padding=5)
+        labelframe.pack(side=tk.LEFT, anchor='n')
+
+        # Content inside labelframe
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
+        simpleSubframeDiv.pack_propagate(False)
+
+        # create a volume slider for each volume type (music_volume, mic_volume, tts_volume)
+        ttk.Label(simpleSubframeDiv, text="Music", width=8).pack(side=tk.LEFT)
+        self.music_volume_slider = ttk.Scale(simpleSubframeDiv, length=200, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_music_volume_change)
+        self.music_volume_slider.pack(side=tk.LEFT)
+        self.music_volume_slider.set(self.controller.music_volume)
+
+        self.music_volume_label = ttk.Label(simpleSubframeDiv, text=str(self.controller.music_volume))
+        self.music_volume_label.pack(side=tk.LEFT, padx=5)
+
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
+        simpleSubframeDiv.pack_propagate(False)
+
+        ttk.Label(simpleSubframeDiv, text="Mic", width=8).pack(side=tk.LEFT)
+        self.mic_volume_slider = ttk.Scale(simpleSubframeDiv, length=200, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_mic_volume_change)
+        self.mic_volume_slider.pack(side=tk.LEFT)
+        self.mic_volume_slider.set(self.controller.mic_volume)
+
+        self.mic_volume_label = ttk.Label(simpleSubframeDiv, text=str(self.controller.mic_volume))
+        self.mic_volume_label.pack(side=tk.LEFT, padx=5)
+
+        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
+        simpleSubframeDiv.pack_propagate(False)
+
+        ttk.Label(simpleSubframeDiv, text="TTS", width=8).pack(side=tk.LEFT)
+        self.tts_volume_slider = ttk.Scale(simpleSubframeDiv, length=200, from_=0, to=100, orient=tk.HORIZONTAL, command=self._on_tts_volume_change)
+        self.tts_volume_slider.pack(side=tk.LEFT)
+        self.tts_volume_slider.set(self.controller._tts.tts_volume)
+
+        self.tts_volume_label = ttk.Label(simpleSubframeDiv, text=str(self.controller._tts.tts_volume))
+        self.tts_volume_label.pack(side=tk.LEFT, padx=5)
+
     
-    def _create_media_selection_frame(self):
-        paned = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True)
+    def _create_tts_frame(self):
+        frame = ttk.Frame(self.bottomFrame, padding=5)
+        frame.pack(side=tk.LEFT, anchor='n')
 
-        musicFrame = ttk.Labelframe(paned, text="Music Library", width=200)
-        paned.add(musicFrame, weight=1)
-        self.music_list = tk.Listbox(musicFrame)
-        self.music_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        ttk.Button(musicFrame, text="Refresh", command=self._refresh_music).pack(pady=5)
-        self._refresh_music() # Load music list on startup
-        self.music_list.bind('<Double-Button-1>', lambda e: self.play_selected_song(False))
+        # Add labelframe using grid (not pack)
+        labelframe = ttk.Labelframe(frame, text="Text-To-Speech", padding=5)
+        labelframe.pack(side=tk.LEFT, anchor='n')
 
-        ttsFrame = ttk.Labelframe(paned, text="TTS", width=200)
-        paned.add(ttsFrame, weight=1)
+
+        # Content inside labelframe
+        simpleSubframeDiv = ttk.Frame(labelframe, height=150, width=600)
+        simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5), anchor='n')
+        simpleSubframeDiv.pack_propagate(False)
+
+        leftSubFrameDiv = ttk.Frame(simpleSubframeDiv, height=150, width=300)
+        leftSubFrameDiv.pack(side=tk.LEFT, padx=5, pady=5, anchor='n')
+        leftSubFrameDiv.pack_propagate(False)
+
         # add textbox textarea
-        self.tts_text = tk.Text(ttsFrame, height=5)
-        self.tts_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        ttk.Button(ttsFrame, text="Play TTS", command=self._play_tts).pack(side=tk.LEFT, padx=10)
-        ttk.Button(ttsFrame, text="Clear TTS", command=self._clear_tts).pack(side=tk.LEFT, padx=10)
-        ttk.Button(ttsFrame, text="Save TTS", command=self._save_tts).pack(side=tk.LEFT, padx=10)
+        self.tts_text = tk.Text(leftSubFrameDiv, height=8, width=30, wrap=tk.WORD)
+        self.tts_text.pack(side=tk.LEFT, padx=5, pady=5, anchor='n')
+
+        rightSubFrameDiv = ttk.Frame(simpleSubframeDiv, height=150, width=300)
+        rightSubFrameDiv.pack(side=tk.RIGHT, padx=5, pady=5, anchor='n')
+        rightSubFrameDiv.pack_propagate(False)
+
+        rightTop = ttk.Frame(rightSubFrameDiv, height=40, width=600)
+        rightTop.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        rightTop.pack_propagate(False)
+
+
+        ttk.Button(rightTop, text="Play TTS", command=self._play_tts).pack(side=tk.LEFT, padx=10)
+        ttk.Button(rightTop, text="Clear TTS", command=self._clear_tts).pack(side=tk.LEFT, padx=10)
+        ttk.Button(rightTop, text="Save TTS", command=self._save_tts).pack(side=tk.LEFT, padx=10)
+
+        rightMiddle = ttk.Frame(rightSubFrameDiv, height=40, width=600)
+        rightMiddle.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        rightMiddle.pack_propagate(False)
 
         self.tts_voice_list = [f"{i}: {d.name}" for i, d in enumerate(self.controller._tts.voicelist)]
 
         # Add TTS voice selection
-        ttk.Label(ttsFrame, text="TTS Voice").pack(side=tk.LEFT)
-        self.tts_voice_cb = ttk.Combobox(ttsFrame, values=self.tts_voice_list, state="readonly", width=60)
+        ttk.Label(rightMiddle, text="TTS Voice").pack(side=tk.LEFT)
+        self.tts_voice_cb = ttk.Combobox(rightMiddle, values=self.tts_voice_list, state="readonly", width=60)
         self.tts_voice_cb.pack(side=tk.LEFT, padx=5)
         self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
         self.tts_voice_cb.current(0)
 
+        rightBottom = ttk.Frame(rightSubFrameDiv, height=40, width=600)
+        rightBottom.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        rightBottom.pack_propagate(False)
 
         # Add tts rate slider
-        ttk.Label(ttsFrame, text="TTS Rate:").pack(side=tk.LEFT)
-        self.tts_rate_slider = ttk.Scale(ttsFrame, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_rate_change, length=250)
+        ttk.Label(rightBottom, text="TTS Rate:").pack(side=tk.LEFT)
+        self.tts_rate_slider = ttk.Scale(rightBottom, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_rate_change, length=250)
         self.tts_rate_slider.pack(side=tk.LEFT, padx=5)
         self.tts_rate_slider.set(self.controller._tts_rate)
 
-        self.tts_rate_label = ttk.Label(ttsFrame, text=str(self.controller._tts_rate))
-        self.tts_rate_label.pack(side=tk.LEFT, padx=5)
+        self.tts_rate_label = ttk.Label(rightBottom, text=str(self.controller._tts_rate)).pack(side=tk.LEFT, padx=5)
+
+    def _create_media_playback_frame(self):
+        frame = ttk.Frame(self.bottomFrame, padding=10)
+        frame.pack(side=tk.LEFT, anchor='n')
+
+        labelframe = ttk.Labelframe(frame, text="Music Library", padding=10, width=200)
+        labelframe.pack(side=tk.LEFT, anchor='n')
+
+        topFrame = ttk.Frame(labelframe, height=50, width=600)
+        topFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        topFrame.pack_propagate(False)
+
+        ttk.Button(
+            topFrame, text="Pause/Resume", command=self._pause_resume_music
+        ).pack(side=tk.LEFT)
+
+        ttk.Button(
+            topFrame, text="Stop", command=self._stop_music
+        ).pack(side=tk.LEFT)
+
+        middleFrame = ttk.Frame(labelframe, height=50, width=600)
+        middleFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        middleFrame.pack_propagate(False)
+
+        ttk.Label(middleFrame, text="Youtube URL:").pack(side=tk.LEFT)
+        self.youtube_url = tk.Entry(middleFrame, width=50)
+        self.youtube_url.pack(side=tk.LEFT, padx=5)
+        ttk.Button(middleFrame, text="Download", command=self.play_youtube_url).pack(side=tk.LEFT, padx=5)
+
+        bottomFrame = ttk.Frame(labelframe, height=200, width=600)
+        bottomFrame.pack(fill=tk.BOTH, expand=True, pady=(0, 5), anchor='n')
+        bottomFrame.pack_propagate(False)
+
+        self.music_list = tk.Listbox(bottomFrame)
+        ttk.Button(bottomFrame, text="Refresh", command=self._refresh_music).pack(side=tk.TOP, pady=5, anchor='w')
+        self.music_list.pack(fill=tk.BOTH, expand=True)
+        self.music_list.bind('<Double-Button-1>', lambda e: self.play_selected_song(False))
+
+        self._refresh_music() # Load music list on startup
+        
 
 
     def _create_play_pause_controls_frame(self):
         top = ttk.Frame(self, padding=10)
         top.pack(fill=tk.X)
 
-        ttk.Button(
-            top, text="Pause/Resume", command=self._pause_resume_music
-        ).pack(side=tk.LEFT)
-
-        ttk.Button(
-            top, text="Stop", command=self._stop_music
-        ).pack(side=tk.LEFT)
+        
 
         ttk.Label(top, text="[Audio Meter Goes Here]").pack(side=tk.LEFT)
 
@@ -276,10 +395,7 @@ class MainWindow(tk.Tk):
 
 
         # add a textbox (not a textarea) for a youtube URL and then a button that says Download Youtube Video
-        ttk.Label(top, text="Youtube URL:").pack(side=tk.LEFT)
-        self.youtube_url = tk.Entry(top, width=50)
-        self.youtube_url.pack(side=tk.LEFT, padx=5)
-        ttk.Button(top, text="Download", command=self.play_youtube_url).pack(side=tk.LEFT, padx=5)
+       
 
 
     def open_popup(self):
@@ -487,14 +603,20 @@ class MainWindow(tk.Tk):
 
     def _on_music_volume_change(self, value):
         self.controller.music_volume = int(float(value))
+        if self.music_volume_label and self.music_volume_label.winfo_exists():
+            self.music_volume_label.config(text=str(self.controller.music_volume))
         self.controller.push_settings()  # Save current settings to db
     
     def _on_mic_volume_change(self, value):
         self.controller.mic_volume = int(float(value))
+        if self.mic_volume_label and self.mic_volume_label.winfo_exists():
+            self.mic_volume_label.config(text=str(self.controller.mic_volume))
         self.controller.push_settings()  # Save current settings to db
     
     def _on_tts_volume_change(self, value):
         self.controller._tts.tts_volume = int(float(value))    
+        if self.tts_volume_label and self.tts_volume_label.winfo_exists():
+            self.tts_volume_label.config(text=str(self.controller._tts.tts_volume))
         self.controller.push_settings()  # Save current settings to db
 
     # --------------   Main Loop   ------------

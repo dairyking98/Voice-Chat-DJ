@@ -11,8 +11,9 @@ from .utils import convert_channels, adjust_volume
 
 class Playback():
 
-    def __init__(self):
+    def __init__(self, controller):
         super().__init__()
+        self.controller = controller
         self._current_proc     = None
         self._playback_thread  = None
         self._pause_flag       = threading.Event()
@@ -101,9 +102,9 @@ class Playback():
                 continue
 
             chunk = convert_channels(data, 1, 1)
-            stream.write(adjust_volume(chunk, music_volume))
+            stream.write(adjust_volume(chunk, self.controller.music_volume))
             if listen_stream:
-                listen_stream.write(adjust_volume(chunk, music_volume))
+                listen_stream.write(adjust_volume(chunk, self.controller.music_volume))
             data = reader(MUSIC_CHUNK)
 
         # cleanup
@@ -152,7 +153,7 @@ class Playback():
             while True:
                 data=in_s.read(MIC_CHUNK,exception_on_overflow=False)
                 data=convert_channels(data,MIC_CHANNELS,out_ch)
-                data=adjust_volume(data,0 if self.stop_mic_flag.is_set() else mic_volume)
+                data=adjust_volume(data,0 if self.stop_mic_flag.is_set() else self.controller.mic_volume)
                 out_s1.write(data)
                 if out_s2: out_s2.write(data)
 
