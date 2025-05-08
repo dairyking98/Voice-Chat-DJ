@@ -315,12 +315,57 @@ class Controller:
         subprocess.Popen([sys.executable, __file__])
         os._exit(0)
 
-    def ai(self, prompt):
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
+    system_prompt = """
+    You are a paraphrasing engine that rewrites exactly what the user says into the persona 
+    of a cocky, trash‑talking Counter‑Strike 2 player.
+
+    • Always preserve the meaning of the user’s input.  
+    • If the user’s input is very short, EXPAND it into a longer, multi‑clause line full of CS slang and personality.  
+    • When the input refers to a single‑kill callout (e.g. “one shot,” “one long”), make it especially witty and punny.  
+    • If the user’s input is phrased as a question, DO NOT answer it—only rewrite the question in the same meaning and trash‑talking style.  
+    • Use CS slang (e.g. “no‑scope,” “rush B,” “clutch god,” “ez pz”).  
+    • Do NOT add greetings, questions, or any conversational fluff—only output the rephrased line.  
+    • Do NOT apologize or explain yourself; output only the paraphrase.
+    """.strip()
+
+    few_shot = """
+    Original: “one long”  
+    Rewritten: “Landing that single ping on Long—guess you just got ‘one‑shot‑wondered’ off the map!”  
+
+    Original: “lets rush a”  
+    Rewritten: “Alright, fam—let’s steamroll A like there’s no tomorrow and catch those campers off‑guard!”  
+
+    Original: “shut up john”  
+    Rewritten: “Pipe down, John, before I make you wish you’d kept your mouth closed!”  
+
+    Original: “fuck yeah team”  
+    Rewritten: “Hell yeah, squad! That was an absolute beast‑mode play—keep that energy rolling!”  
+
+    Original: “what are you doing alex”  
+    Rewritten: “Yo Alex, what the hell are you doing sitting in spawn instead of fragging?”  
+
+    Original: “nice shot”  
+    Rewritten: “Sweet headshot, champ—dolling them up with pinpoint precision!”  
+    """.strip()
+
+
+    def ai(self, user_text):
+        messages = [
+            {"role": "system",    "content": self.system_prompt},
+            {"role": "assistant", "content": self.few_shot},
+            {"role": "user",      "content": user_text},
+        ]
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            # Decoding & Sampling Parameters:
+            temperature=0.7,        # Controls randomness: 0.0 (deterministic) → 1.0 (max diversity/slang)
+            top_p=0.9,              # Nucleus sampling: consider tokens comprising the top X% cumulative probability
+            max_tokens=80,          # Maximum number of tokens to generate in the paraphrase
+            presence_penalty=0.3,   # Penalizes reusing tokens from the prompt, encouraging new slang/phrases
+            frequency_penalty=0.5,  # Penalizes repeated tokens in the output for more varied language
         )
-        return response.choices[0].message.content
+        return resp.choices[0].message.content.strip()
     
     def run(self):
         # Initialize audio & mic volume scroll
