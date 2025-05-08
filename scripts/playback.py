@@ -18,6 +18,7 @@ class Playback():
         self._playback_thread  = None
         self._pause_flag       = threading.Event()
         self._stop_flag        = threading.Event()
+        self._kill_flag        = threading.Event()
         self.stop_mic_flag     = threading.Event()
         self.mic_thread        = None
 
@@ -132,25 +133,26 @@ class Playback():
     ### MIC PASSTHROUGH ###
     def switch_to_mic(self, p, sel_in_dev, sel_out_dev, sel_listen_dev, listen_mic_enabled, mic_volume):
         self.stop_mic_flag.clear()
+        self._kill_flag.clear()
         if self.mic_thread and self.mic_thread.is_alive(): return
         def _mic_loop():
             self.stop_mic_flag.clear()
-            out_ch=p.get_device_info_by_index(sel_out_dev)['maxOutputChannels']
+            out_ch=p.get_device_info_by_index(self.controller.output_device)['maxOutputChannels']
             in_s=p.open(format=FORMAT,channels=MIC_CHANNELS,rate=MIC_RATE,
-                        input=True,input_device_index=sel_in_dev,
+                        input=True,input_device_index=self.controller.input_device,
                         frames_per_buffer=MIC_CHUNK)
             out_s1=p.open(format=FORMAT,channels=out_ch,rate=MIC_RATE,
-                        output=True,output_device_index=sel_out_dev,
+                        output=True,output_device_index=self.controller.output_device,
                         frames_per_buffer=MIC_CHUNK)
             out_s2=None
-            if listen_mic_enabled and sel_listen_dev is not None:
+            if self.controller.listen_enabled_mic and self.controller.listen_device is not None:
                 try:
                     out_s2=p.open(format=FORMAT,channels=out_ch,rate=MIC_RATE,
-                                output=True,output_device_index=sel_listen_dev,
+                                output=True,output_device_index=self.controller.listen_device,
                                 frames_per_buffer=MIC_CHUNK)
                 except: debug("mic-listen fail")
 
-            while True:
+            while not self._kill_flag.is_set():
                 data=in_s.read(MIC_CHUNK,exception_on_overflow=False)
                 data=convert_channels(data,MIC_CHANNELS,out_ch)
                 data=adjust_volume(data,0 if self.stop_mic_flag.is_set() else self.controller.mic_volume)
@@ -167,6 +169,11 @@ class Playback():
     def stop_mic(self):
         if self.mic_thread and self.mic_thread.is_alive():
             self.stop_mic_flag.set()
+
+    def kill_mic(self):
+        self._kill_flag.set()
+        self.mic_thread.join(timeout=1)
+        self.mic_thread = None
 
 
     def pause_music(self):

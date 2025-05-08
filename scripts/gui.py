@@ -381,23 +381,6 @@ class MainWindow(tk.Tk):
         self._refresh_music() # Load music list on startup
         
 
-
-    def _create_play_pause_controls_frame(self):
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill=tk.X)
-
-        
-
-        ttk.Label(top, text="[Audio Meter Goes Here]").pack(side=tk.LEFT)
-
-        
-        ttk.Label(top, text="").pack(side=tk.LEFT, padx=10) # Horizontal spacer
-
-
-        # add a textbox (not a textarea) for a youtube URL and then a button that says Download Youtube Video
-       
-
-
     def open_popup(self):
         # If tts window is already open, bring it to the front and focus
         if self.tts_popup and self.tts_popup.winfo_exists():
@@ -595,6 +578,10 @@ class MainWindow(tk.Tk):
         self.controller.listen_enabled_music = self.listen_music.get()
         self.controller.listen_enabled_tts = self.listen_tts.get()
         self.controller.push_settings()  # Save current settings to db
+
+        # Restart mic thread to reset settings that only occur before the thread starts
+        self.controller._playback.kill_mic()
+        self.controller.mic_down()
 
     def play_youtube_url(self):
         url = self.youtube_url.get().strip()
