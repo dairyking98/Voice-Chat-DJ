@@ -90,12 +90,16 @@ class MainWindow(tk.Tk):
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit)
         menubar.add_cascade(label="File", menu=file_menu)
+
+        gpt_menu = tk.Menu(menubar, tearoff=False)
+        gpt_menu.add_command(label="Set OpenAI API key", command=self.open_set_api_key_popup)
         
         self.bind_menu = tk.Menu(menubar, tearoff=False)
         # Binds 0 -> 9
         for i in range(10):
             self.bind_menu.add_command(label=f"{i} - None", command=lambda i=i: self.set_bind(i))
         menubar.add_cascade(label="Binds", menu=self.bind_menu)
+        menubar.add_cascade(label="GPT", menu=gpt_menu)
         self.config(menu=menubar)
 
     def set_bind(self, bindNumber):
@@ -132,6 +136,11 @@ class MainWindow(tk.Tk):
                 self.bind_menu.insert_command(i, label=f"{i} - {self.controller.binds.get(str(i))}", command=lambda i=i: self.set_bind(i))
                 keyboard.add_hotkey(f'ctrl+{str(i)}', lambda i=str(i): self.controller.play_bind(str(i)))
 
+    def open_set_api_key_popup(self):
+        api_key = simpledialog.askstring("Set OpenAI API Key", "Enter API Key:")
+        self.controller.ai_api_key = api_key.strip()
+        self.controller.push_settings()
+        self.controller.initializeGPTClient()
 
     # --------------   Frames   ------------
 
