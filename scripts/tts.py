@@ -39,7 +39,7 @@ class TTS():
             if voiceMode == "OpenAI":
                 response = self.controller.client.audio.speech.create(
                     model="tts-1",
-                    voice="onyx", # sage
+                    voice="sage", # sage
                     input=text,
                     response_format="wav",
                 )

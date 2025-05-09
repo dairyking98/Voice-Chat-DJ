@@ -20,3 +20,5 @@ tts_raw.wav
 tts_stereo48k.wav
 
 .env
+resampled_audio.wav
+input_audio.wav
