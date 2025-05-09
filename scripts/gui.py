@@ -471,7 +471,7 @@ class MainWindow(tk.Tk):
 
 
         # Content inside labelframe
-        subframe = ttk.Frame(labelframe, height=250, width=650)
+        subframe = ttk.Frame(labelframe, height=250, width=600)
         subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
         subframe.pack_propagate(False)
 
@@ -516,10 +516,11 @@ class MainWindow(tk.Tk):
 
         # Add tts rate slider
         ttk.Label(rightBottom, text="TTS Rate:").pack(side=tk.LEFT)
-        self.tts_rate_slider = ttk.Scale(rightBottom, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_rate_change, length=250)
+        self.tts_rate_slider = ttk.Scale(rightBottom, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_rate_change, length=180)
         self.tts_rate_slider.pack(side=tk.LEFT, padx=5)
         self.tts_rate_slider.set(self.controller._tts_rate)
-        self.tts_rate_label = ttk.Label(rightBottom, text=str(self.controller._tts_rate)).pack(side=tk.LEFT, padx=5)
+        self.tts_rate_label = ttk.Label(rightBottom, text=str(self.controller._tts_rate))
+        self.tts_rate_label.pack(side=tk.LEFT, padx=5)
 
 
         anotherBottomFrame = ttk.Frame(rightSubFrameDiv, height=40, width=300)
