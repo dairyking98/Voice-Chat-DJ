@@ -11,9 +11,15 @@ import keyboard
 import mouse
 import pyttsx3
 import re
+import win32gui
+import win32con
+import win32com.client
+import ctypes
 import tkinter as tk
 from tkinter import font as tkfont, ttk, simpledialog, messagebox
-import ctypes
+
+
+
 
 class MainWindow(tk.Tk):
     def __init__(self, controller):
@@ -194,7 +200,7 @@ class MainWindow(tk.Tk):
 
     def create_gpt_profile(self, mode, selected_profile=None):
         if self.gpt_popup and self.gpt_popup.winfo_exists():
-            self.gpt_popup.focus_force()
+            self._gpt_popup_set_focus()
             return
 
         profile_values = self.controller.default_gpt_profile.copy() if mode == "create" else self.controller.gpt_profiles[selected_profile].copy()
@@ -297,12 +303,7 @@ class MainWindow(tk.Tk):
         save_button = ttk.Button(button_frame, text="Save", command=lambda mode=mode: self._save_gpt_profile(mode, selected_profile))
         save_button.pack(side=tk.LEFT, padx=5)
 
-        # Lift and focus on popup window and system entry
-        self.gpt_popup.lift()
-        self.gpt_popup.attributes("-topmost", True)
-        self.gpt_popup.grab_set()  
-        self.gpt_popup.focus_force()  # Set focus to the popup window
-        self.gpt_popup_system_entry.focus_set()
+        self._gpt_popup_set_focus()
 
     # --------------   Frames   ------------
 
@@ -606,14 +607,9 @@ class MainWindow(tk.Tk):
         # Add label showing the rate number
         self.tts_popup_rate_label = ttk.Label(rate_frame, text=str(self._tts_popup_rate))
         self.tts_popup_rate_label.pack(side=tk.LEFT, padx=5)
-
-        self.tts_popup.lift()
-        self.tts_popup.attributes("-topmost", True)
         
         # Use after_idle to delay focus setting
-        self.tts_popup.after_idle(self._tts_popup_set_focus)
-
-        self.tts_popup.grab_set()  # Make the popup modal
+        self._tts_popup_set_focus()
                 
     # --------------   Handlers   ------------
 
@@ -696,9 +692,22 @@ class MainWindow(tk.Tk):
         self.tts_popup = None  # Reset the popup reference
 
     def _tts_popup_set_focus(self):
-        # Ensure the window is fully initialized before setting focus
+        # Focus on window on OS level
+        hwnd = self.tts_popup.winfo_id()
+        self.force_focus_hwnd(hwnd)
+
+        # Focus window and system prompt
         self.tts_popup.focus_force()
         self.tts_popup_entry.focus_set()
+
+    def _gpt_popup_set_focus(self):
+        # Focus on window on OS level
+        hwnd = self.gpt_popup.winfo_id()
+        self.force_focus_hwnd(hwnd)
+
+        # Focus window and name entry
+        self.gpt_popup.focus_force()
+        self.gpt_popup_name_entry.focus_set()
 
     def _tts_popup_rate_change(self, value):
         self._tts_popup_rate = int(float(value))
@@ -863,6 +872,12 @@ class MainWindow(tk.Tk):
         self.controller.push_settings()  # Save current settings to db
 
     # --------------   Main Loop   ------------
+
+    def force_focus_hwnd(self, hwnd):
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shell.SendKeys('%')  # Send ALT key to allow focus steal
+        win32gui.ShowWindow(hwnd, win32con.SW_SHOWNORMAL)
+        win32gui.SetForegroundWindow(hwnd)
 
     def reset_settings(self):
         # Confirm reset

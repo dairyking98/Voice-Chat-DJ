@@ -22,7 +22,7 @@ You’ll then see “CABLE Input (VB-Audio Virtual Cable)” in your audio devic
 
 From inside your (activated) venv:
 
-`pip install yt-dlp keyboard mouse pyaudio pyttsx3 pynput`
+`pip install yt-dlp keyboard mouse pyaudio pyttsx3 pynput pywin32 openai`
 
 # Run Sctipt
 
