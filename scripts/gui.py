@@ -74,7 +74,8 @@ class MainWindow(tk.Tk):
 
         # TTS Popup state
         self._tts_popup_rate = 160 # TTS rate for popup window
-        self.tts_mode = None # TTS mode
+        self.tts_mode = "TTS" # TTS mode
+        self._tts_voice_mode = "SAPI5" # TTS voice mode
 
         # Listen mode states
         self.listen_mic = None # Listen mic flag
@@ -601,11 +602,19 @@ class MainWindow(tk.Tk):
         cancel_button = ttk.Button(button_frame, text="Cancel", command=self._cancel_tts_popup)
         cancel_button.pack(side=tk.LEFT, padx=5)
 
+        mode_frame = ttk.Frame(self.tts_popup)
+        mode_frame.pack(pady=10)
+
         # TTS mode dropdown
-        self.tts_mode_cb = ttk.Combobox(button_frame, values=["TTS", "AI TTS"], state="readonly", width=20)
+        self.tts_mode_cb = ttk.Combobox(mode_frame, values=["TTS", "AI TTS"], state="readonly", width=20)
         self.tts_mode_cb.current(1 if self.tts_mode == "AI TTS" else 0)
-        self.tts_mode_cb.pack(side=tk.RIGHT, padx=5)
+        self.tts_mode_cb.pack(side=tk.LEFT, padx=5)
         self.tts_mode_cb.bind('<<ComboboxSelected>>', self._on_tts_mode_change)
+
+        self.tts_voice_mode_cb = ttk.Combobox(mode_frame, values=["SAPI5", "OpenAI"], state="readonly", width=20)
+        self.tts_voice_mode_cb.current(1 if self._tts_voice_mode == "OpenAI" else 0)
+        self.tts_voice_mode_cb.pack(side=tk.RIGHT, padx=5)
+        self.tts_voice_mode_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_mode_change)
 
         rate_frame = ttk.Frame(self.tts_popup)
         rate_frame.pack(pady=10)
@@ -689,7 +698,7 @@ class MainWindow(tk.Tk):
         if not text:
             return
 
-        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self._tts_popup_rate)
+        self.controller._tts.play_tts(text, self.controller.p, self.controller.output_device, self.controller.listen_device, self.controller.listen_enabled_tts, self._tts_popup_rate, self._tts_voice_mode)
 
     def _play_ai_tts_popup(self):
         text = self.controller.ai(self.tts_popup_entry.get().strip())
@@ -735,6 +744,9 @@ class MainWindow(tk.Tk):
 
     def _on_tts_mode_change(self, event):
         self.tts_mode = self.tts_mode_cb.get()
+
+    def _on_tts_voice_mode_change(self, event):
+        self._tts_voice_mode = self.tts_voice_mode_cb.get()
 
     # -------
 

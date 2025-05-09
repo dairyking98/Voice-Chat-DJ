@@ -11,8 +11,9 @@ from config import FORMAT, MUSIC_CHUNK
 from .utils import convert_channels, adjust_volume, resample_wav
 
 class TTS():
-    def __init__(self):
+    def __init__(self, controller):
         super().__init__()
+        self.controller = controller
         self.engine = pyttsx3.init()
         self.voicelist = self.engine.getProperty('voices')
         self.tts_voices  = {v.name.lower(): v.id for v in self.voicelist}
@@ -20,7 +21,7 @@ class TTS():
         self.tts_voice_name = next((v.name for v in self.voicelist if v.id == self.tts_voice_id), '')
         self.tts_volume = int(self.engine.getProperty('volume') * 100)
 
-    def play_tts(self, text, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, ttsRate=160):
+    def play_tts(self, text, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, ttsRate=160, voiceMode="SAPI5"):
         """
         1) Save raw TTS to WAV
         2) Resample to stereo 48 kHz
@@ -35,7 +36,27 @@ class TTS():
         resample_wav(raw, stereo, 48000)
 
         def _play():
-            wf = wave.open(stereo, 'rb')
+            if voiceMode == "OpenAI":
+                response = self.controller.client.audio.speech.create(
+                    model="tts-1",
+                    voice="onyx", # sage
+                    input=text,
+                    response_format="wav",
+                )
+                audio_data = response.read()  # Read the full response content
+                
+                # Save to temporary file
+                input_path = "input_audio.wav"
+                output_path = "resampled_audio.wav"
+
+                # Save audio data to input_path
+                with open(input_path, "wb") as f:
+                    f.write(audio_data)
+
+                # Resample to 48 kHz
+                resample_wav(input_path, output_path, target_rate=48000)
+
+            wf = wave.open(output_path if voiceMode == "OpenAI" else stereo, 'rb')
             in_ch, rate = wf.getnchannels(), wf.getframerate()
             reader = lambda n: wf.readframes(n)
             stream = pyaudio_instance.open(

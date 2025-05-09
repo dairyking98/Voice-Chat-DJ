@@ -376,7 +376,7 @@ class Controller:
 
         # Initialize single instances
         self._playback = Playback(self)
-        self._tts = TTS()
+        self._tts = TTS(self)
 
         # Bind hotkeys
         self._start_keyboard_listeners()

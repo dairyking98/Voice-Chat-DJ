@@ -4,11 +4,15 @@ import subprocess
 import wave
 import time
 import array
+import pyaudio
+import io
+import os
+import wave
 import numpy as np
 
 from config import FORMAT, MUSIC_CHUNK, DEBUG, MIC_CHANNELS, MIC_RATE, MIC_CHUNK
 
-from .utils import convert_channels, adjust_volume
+from .utils import convert_channels, adjust_volume, resample_wav
 
 class Playback():
 
