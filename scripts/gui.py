@@ -186,6 +186,8 @@ class MainWindow(tk.Tk):
 
     def open_set_api_key_popup(self):
         api_key = simpledialog.askstring("Set OpenAI API Key", "Enter API Key:")
+        if api_key is None:
+            return
         self.controller.ai_api_key = api_key.strip()
         self.controller.push_settings()
         self.controller.initializeGPTClient()
@@ -568,6 +570,7 @@ class MainWindow(tk.Tk):
         self.tts_popup = tk.Toplevel()
         self.tts_popup.title("TTS")
         self.tts_popup.geometry("400x200")
+        self.tts_popup.bind("<Escape>", lambda event: self._cancel_tts_popup())
 
         label = ttk.Label(self.tts_popup, text="Enter something:")
         label.pack(pady=(10, 0))
