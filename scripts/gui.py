@@ -15,11 +15,9 @@ import win32gui
 import win32con
 import win32com.client
 import ctypes
+from tkinter import ttk
 import tkinter as tk
 from tkinter import font as tkfont, ttk, simpledialog, messagebox
-
-
-
 
 class MainWindow(tk.Tk):
     def __init__(self, controller):
@@ -71,6 +69,8 @@ class MainWindow(tk.Tk):
         self.gpt_popup_frequency_penalty_label = None # GPT frequency penalty label
         self.gpt_popup_presence_penalty_slider = None # GPT presence penalty slider
         self.gpt_popup_presence_penalty_label = None # GPT presence penalty label
+
+        self.vu_meter = None # VU meter for sound output
 
         # TTS Popup state
         self._tts_popup_rate = 160 # TTS rate for popup window
@@ -471,7 +471,7 @@ class MainWindow(tk.Tk):
 
 
         # Content inside labelframe
-        subframe = ttk.Frame(labelframe, height=250, width=600)
+        subframe = ttk.Frame(labelframe, height=250, width=650)
         subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
         subframe.pack_propagate(False)
 
@@ -519,8 +519,17 @@ class MainWindow(tk.Tk):
         self.tts_rate_slider = ttk.Scale(rightBottom, from_=0, to=300, orient=tk.HORIZONTAL, command=self._tts_rate_change, length=250)
         self.tts_rate_slider.pack(side=tk.LEFT, padx=5)
         self.tts_rate_slider.set(self.controller._tts_rate)
-
         self.tts_rate_label = ttk.Label(rightBottom, text=str(self.controller._tts_rate)).pack(side=tk.LEFT, padx=5)
+
+
+        anotherBottomFrame = ttk.Frame(rightSubFrameDiv, height=40, width=300)
+        anotherBottomFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        anotherBottomFrame.pack_propagate(False)
+
+        self.vu_meter = ttk.Progressbar(anotherBottomFrame, orient="horizontal", length=200, mode="determinate", maximum=100)
+        self.vu_meter.pack(side=tk.LEFT, padx=5, pady=5, anchor='n')
+
+
 
     def _create_media_playback_frame(self):
         frame = ttk.Frame(self.bottomFrame, padding=5)

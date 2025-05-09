@@ -4,6 +4,7 @@ import subprocess
 import wave
 import time
 import array
+import numpy as np
 
 from config import FORMAT, MUSIC_CHUNK, DEBUG, MIC_CHANNELS, MIC_RATE, MIC_CHUNK
 
@@ -104,6 +105,15 @@ class Playback():
 
             chunk = convert_channels(data, 1, 1)
             stream.write(adjust_volume(chunk, self.controller.music_volume))
+            
+            audio_np = np.frombuffer(chunk, dtype=np.int16)
+            rms = np.sqrt(np.mean(np.square(audio_np)))
+            if rms and not np.isnan(rms):
+                level = min(100, int((rms / 200) * 100))
+                self.controller.app.vu_meter["value"] = level
+            else:
+                self.controller.app.vu_meter["value"] = 0
+
             if listen_stream:
                 listen_stream.write(adjust_volume(chunk, self.controller.music_volume))
             data = reader(MUSIC_CHUNK)
