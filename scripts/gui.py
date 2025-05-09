@@ -51,6 +51,21 @@ class MainWindow(tk.Tk):
         self.mic_volume_label = None # Mic volume label
         self.tts_volume_label = None # TTS volume label
 
+        self.gpt_popup = None # GPT popup window
+        self.gpt_popup_name_entry = None # GPT profile name entry
+        self.gpt_popup_system_entry = None # GPT system prompt entry
+        self.gpt_popup_assistant_entry = None # GPT assistant prompt entry
+        self.gpt_popup_temperature_slider = None # GPT temperature slider
+        self.gpt_popup_temperature_label = None # GPT temperature label
+        self.gpt_popup_maxtoken_slider = None # GPT max token slider
+        self.gpt_popup_maxtoken_label = None # GPT max token label
+        self.gpt_popup_top_p_slider = None # GPT top p slider
+        self.gpt_popup_top_p_label = None # GPT top p label
+        self.gpt_popup_frequency_penalty_slider = None # GPT frequency penalty slider
+        self.gpt_popup_frequency_penalty_label = None # GPT frequency penalty label
+        self.gpt_popup_presence_penalty_slider = None # GPT presence penalty slider
+        self.gpt_popup_presence_penalty_label = None # GPT presence penalty label
+
         # TTS Popup state
         self._tts_popup_rate = 160 # TTS rate for popup window
         self.tts_mode = None # TTS mode
@@ -93,6 +108,20 @@ class MainWindow(tk.Tk):
 
         gpt_menu = tk.Menu(menubar, tearoff=False)
         gpt_menu.add_command(label="Set OpenAI API key", command=self.open_set_api_key_popup)
+        gpt_menu.add_separator()
+
+        # Add a profile for every profile in self.controller.gpt_profiles
+        for idx, profile in enumerate(self.controller.gpt_profiles):
+            label = f"{idx} - {profile['name']}"
+            if idx == self.controller.gpt_profile:
+                label = "* " + label
+            submenu = tk.Menu(gpt_menu, tearoff=False)
+            submenu.add_command(label="Set", command=lambda i=idx: self.set_gpt_profile(i))
+            submenu.add_command(label="Edit", command=lambda i=idx: self.create_gpt_profile("edit", i))
+            submenu.add_command(label="Delete", command=lambda i=idx: self.delete_gpt_profile(i))
+            gpt_menu.add_cascade(label=label, menu=submenu)
+
+        gpt_menu.add_command(label="Create GPT Profile", command=lambda: self.create_gpt_profile("create"))
         
         self.bind_menu = tk.Menu(menubar, tearoff=False)
         # Binds 0 -> 9
@@ -101,6 +130,25 @@ class MainWindow(tk.Tk):
         menubar.add_cascade(label="Binds", menu=self.bind_menu)
         menubar.add_cascade(label="GPT", menu=gpt_menu)
         self.config(menu=menubar)
+
+    def set_gpt_profile(self, profile_id):
+        # Set the current profile to the selected one
+        self.controller.gpt_profile = profile_id
+        self._create_menu()
+        self.controller.push_settings()
+
+    def delete_gpt_profile(self, profile_id):
+        # Delete the selected profile from the list, and unset the current profile
+        del self.controller.gpt_profiles[profile_id]
+        if self.controller.gpt_profile == profile_id:
+            self.controller.gpt_profile = None
+        elif self.controller.gpt_profile > profile_id:
+            self.controller.gpt_profile -= 1
+        self._create_menu()
+        self.controller.push_settings()
+    
+    def edit_gpt_profile(self, profile_id):
+        print("Editing GPT profile:", profile_id)
 
     def set_bind(self, bindNumber):
         if self.controller.binds.get(bindNumber) is not None:
@@ -141,6 +189,118 @@ class MainWindow(tk.Tk):
         self.controller.ai_api_key = api_key.strip()
         self.controller.push_settings()
         self.controller.initializeGPTClient()
+
+    def create_gpt_profile(self, mode, selected_profile=None):
+        if self.gpt_popup and self.gpt_popup.winfo_exists():
+            self.gpt_popup.focus_force()
+            return
+
+        profile_values = self.controller.default_gpt_profile.copy() if mode == "create" else self.controller.gpt_profiles[selected_profile].copy()
+
+        self.gpt_popup = tk.Toplevel()
+        self.gpt_popup.title("Edit GPT Profile" if mode == "edit" else "Create GPT Profile")
+        self.gpt_popup.geometry("500x600")
+
+        # Name entry
+        subframe = ttk.Frame(self.gpt_popup, height=50)
+        subframe.pack(fill=tk.X, pady=(10,10), padx=20, anchor="w")
+        label = ttk.Label(subframe, text="Name:", width=8)
+        label.pack(side=tk.LEFT)
+        self.gpt_popup_name_entry = tk.Entry(subframe)
+        self.gpt_popup_name_entry.pack(fill="both", expand=True)
+        self.gpt_popup_name_entry.insert(0, profile_values["name"])
+
+        # System prompt
+        label = ttk.Label(self.gpt_popup, text="System prompt:")
+        label.pack(pady=(10, 10), padx=20, anchor="w")
+        self.gpt_popup_system_entry = tk.Text(self.gpt_popup, wrap=tk.WORD, height=5)
+        self.gpt_popup_system_entry.pack(fill="both", expand=True, padx = 20)
+        self.gpt_popup_system_entry.insert("1.0", profile_values["system_prompt"])
+
+        # Assistant few-shot prompt
+        label = ttk.Label(self.gpt_popup, text="Few-Shot prompt:", anchor="w")
+        label.pack(pady=(10, 10), padx=20, anchor="w")
+        self.gpt_popup_assistant_entry = tk.Text(self.gpt_popup, wrap=tk.WORD, height=5)
+        self.gpt_popup_assistant_entry.pack(fill="both", expand=True, padx = 20)
+        self.gpt_popup_assistant_entry.insert("1.0", profile_values["assistant_prompt"])
+
+        # Temperature slider
+        subframe = ttk.Frame(self.gpt_popup, height=50)
+        subframe.pack(fill=tk.X, pady=(10,10), padx=20, anchor="w")
+        label = ttk.Label(subframe, text="Temperature:", width=20)
+        label.pack(side=tk.LEFT)
+        self.gpt_popup_temperature_slider = ttk.Scale(subframe, from_=0, to=1, orient=tk.HORIZONTAL, command=self._gpt_popup_temperature_slider_change, length=220)
+        self.gpt_popup_temperature_slider.pack(side=tk.LEFT)
+        self.gpt_popup_temperature_slider.set(profile_values["temperature"])
+        self.gpt_popup_temperature_label = ttk.Label(subframe, width=5)
+        self.gpt_popup_temperature_label.pack(side=tk.LEFT, padx=(20, 0))
+        self.gpt_popup_temperature_label.config(text=str(profile_values["temperature"]))
+
+
+        # Max token slider
+        subframe = ttk.Frame(self.gpt_popup, height=50)
+        subframe.pack(fill=tk.X, pady=(0,20), padx=20, anchor="w")
+        label = ttk.Label(subframe, text="Max tokens:", width=20)
+        label.pack(side=tk.LEFT)
+        self.gpt_popup_maxtoken_slider = ttk.Scale(subframe, from_=10, to=200, orient=tk.HORIZONTAL, command=self._gpt_popup_maxtoken_slider_change, length=220)
+        self.gpt_popup_maxtoken_slider.pack(side=tk.LEFT)
+        self.gpt_popup_maxtoken_slider.set(profile_values["max_tokens"])
+        self.gpt_popup_maxtoken_label = ttk.Label(subframe, width=5)
+        self.gpt_popup_maxtoken_label.pack(side=tk.LEFT, padx=(20, 0))
+        self.gpt_popup_maxtoken_label.config(text=str(profile_values["max_tokens"]))
+
+
+        # Top P slider
+        subframe = ttk.Frame(self.gpt_popup, height=50)
+        subframe.pack(fill=tk.X, pady=(0,20), padx=20, anchor="w")
+        label = ttk.Label(subframe, text="Top P:", width=20)
+        label.pack(side=tk.LEFT)
+        self.gpt_popup_top_p_slider = ttk.Scale(subframe, from_=0, to=1, orient=tk.HORIZONTAL, command=self._gpt_popup_top_p_slider_change, length=220)
+        self.gpt_popup_top_p_slider.pack(side=tk.LEFT)
+        self.gpt_popup_top_p_slider.set(profile_values["top_p"])
+        self.gpt_popup_top_p_label = ttk.Label(subframe, width=5)
+        self.gpt_popup_top_p_label.pack(side=tk.LEFT, padx=(20, 0))
+        self.gpt_popup_top_p_label.config(text=str(profile_values["top_p"]))
+
+
+        # Frequency penalty slider
+        subframe = ttk.Frame(self.gpt_popup, height=50)
+        subframe.pack(fill=tk.X, pady=(0,20), padx=20, anchor="w")
+        label = ttk.Label(subframe, text="Frequency Penalty:", width=20)
+        label.pack(side=tk.LEFT)
+        self.gpt_popup_frequency_penalty_slider = ttk.Scale(subframe, from_=-2, to=2, orient=tk.HORIZONTAL, command=self._gpt_popup_frequency_penalty_slider_change, length=220)
+        self.gpt_popup_frequency_penalty_slider.pack(side=tk.LEFT)
+        self.gpt_popup_frequency_penalty_slider.set(profile_values["frequency_penalty"])
+        self.gpt_popup_frequency_penalty_label = ttk.Label(subframe, width=5)
+        self.gpt_popup_frequency_penalty_label.pack(side=tk.LEFT, padx=(20, 0))
+        self.gpt_popup_frequency_penalty_label.config(text=str(profile_values["frequency_penalty"]))
+
+
+        # Presence penalty slider
+        subframe = ttk.Frame(self.gpt_popup, height=50)
+        subframe.pack(fill=tk.X, pady=(0,20), padx=20, anchor="w")
+        label = ttk.Label(subframe, text="Presence Penalty:", width=20)
+        label.pack(side=tk.LEFT)
+        self.gpt_popup_presence_penalty_slider = ttk.Scale(subframe, from_=-2, to=2, orient=tk.HORIZONTAL, command=self._gpt_popup_presence_penalty_slider_change, length=220)
+        self.gpt_popup_presence_penalty_slider.pack(side=tk.LEFT)
+        self.gpt_popup_presence_penalty_slider.set(profile_values["presence_penalty"])
+        self.gpt_popup_presence_penalty_label = ttk.Label(subframe, width=5)
+        self.gpt_popup_presence_penalty_label.pack(side=tk.LEFT, padx=(20, 0))
+        self.gpt_popup_presence_penalty_label.config(text=str(profile_values["presence_penalty"]))
+
+        
+        # Save button
+        button_frame = ttk.Frame(self.gpt_popup, height=50)
+        button_frame.pack(fill=tk.X, pady=(0, 20), padx=20, anchor="w")
+        save_button = ttk.Button(button_frame, text="Save", command=lambda mode=mode: self._save_gpt_profile(mode, selected_profile))
+        save_button.pack(side=tk.LEFT, padx=5)
+
+        # Lift and focus on popup window and system entry
+        self.gpt_popup.lift()
+        self.gpt_popup.attributes("-topmost", True)
+        self.gpt_popup.grab_set()  
+        self.gpt_popup.focus_force()  # Set focus to the popup window
+        self.gpt_popup_system_entry.focus_set()
 
     # --------------   Frames   ------------
 
@@ -393,7 +553,7 @@ class MainWindow(tk.Tk):
     def open_popup(self):
         # If tts window is already open, bring it to the front and focus
         if self.tts_popup and self.tts_popup.winfo_exists():
-            self._set_focus()
+            self._tts_popup_set_focus()
             return
 
         self.tts_popup = tk.Toplevel()
@@ -439,7 +599,7 @@ class MainWindow(tk.Tk):
         self.tts_popup.attributes("-topmost", True)
         
         # Use after_idle to delay focus setting
-        self.tts_popup.after_idle(self._set_focus)
+        self.tts_popup.after_idle(self._tts_popup_set_focus)
 
         self.tts_popup.grab_set()  # Make the popup modal
                 
@@ -523,7 +683,7 @@ class MainWindow(tk.Tk):
         self.tts_popup.destroy()
         self.tts_popup = None  # Reset the popup reference
 
-    def _set_focus(self):
+    def _tts_popup_set_focus(self):
         # Ensure the window is fully initialized before setting focus
         self.tts_popup.focus_force()
         self.tts_popup_entry.focus_set()
@@ -546,6 +706,81 @@ class MainWindow(tk.Tk):
         self.tts_mode = self.tts_mode_cb.get()
 
     # -------
+
+
+
+    # GPT POPUP -----
+
+    def _gpt_popup_temperature_slider_change(self, value):
+        if not self.gpt_popup_temperature_label or not self.gpt_popup_temperature_label.winfo_exists(): return
+        temperature = round(float(value), 2)
+        self.gpt_popup_temperature_label.config(text=str(temperature))
+
+    def _gpt_popup_maxtoken_slider_change(self, value):
+        if not self.gpt_popup_maxtoken_label or not self.gpt_popup_maxtoken_label.winfo_exists(): return
+        maxtokens = int(float(value))
+        self.gpt_popup_maxtoken_label.config(text=str(maxtokens))
+
+    def _gpt_popup_top_p_slider_change(self, value):
+        if not self.gpt_popup_top_p_label or not self.gpt_popup_top_p_label.winfo_exists(): return
+        top_p = round(float(value), 2)
+        self.gpt_popup_top_p_label.config(text=str(top_p))
+
+    def _gpt_popup_frequency_penalty_slider_change(self, value):
+        if not self.gpt_popup_frequency_penalty_label or not self.gpt_popup_frequency_penalty_label.winfo_exists(): return
+        frequency_penalty = round(float(value), 2)
+        self.gpt_popup_frequency_penalty_label.config(text=str(frequency_penalty))
+
+    def _gpt_popup_presence_penalty_slider_change(self, value):
+        if not self.gpt_popup_presence_penalty_label or not self.gpt_popup_presence_penalty_label.winfo_exists(): return
+        presence_penalty = round(float(value), 2)
+        self.gpt_popup_presence_penalty_label.config(text=str(presence_penalty))
+
+    def _save_gpt_profile(self, mode, selected_profile=None):
+        # Get values from the popup entries and sliders
+        name_prompt = self.gpt_popup_name_entry.get().strip()
+        system_prompt = self.gpt_popup_system_entry.get("1.0", tk.END).strip()
+        assistant_prompt = self.gpt_popup_assistant_entry.get("1.0", tk.END).strip()
+        temperature = round(float(self.gpt_popup_temperature_slider.get()), 2)
+        max_tokens = int(float(self.gpt_popup_maxtoken_slider.get()))
+        top_p = round(float(self.gpt_popup_top_p_slider.get()), 2)
+        frequency_penalty = round(float(self.gpt_popup_frequency_penalty_slider.get()), 2)
+        presence_penalty = round(float(self.gpt_popup_presence_penalty_slider.get()), 2)
+
+        # Save the profile to the controller
+        if mode == "create":
+            self.controller.gpt_profiles.append({
+                "name": name_prompt,
+                "system_prompt": system_prompt,
+                "assistant_prompt": assistant_prompt,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+            })
+        elif mode == "edit":
+            self.controller.gpt_profiles[selected_profile] = {
+                "name": name_prompt,
+                "system_prompt": system_prompt,
+                "assistant_prompt": assistant_prompt,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "top_p": top_p,
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+            }
+
+        # Update menu GUI
+        self._create_menu()
+
+        # Close the popup
+        self.gpt_popup.destroy()
+        self.gpt_popup = None
+
+        self.controller.push_settings()  # Save current settings to db
+
+    # ------
 
     def _clear_tts(self):
         self.tts_text.delete("1.0", tk.END)

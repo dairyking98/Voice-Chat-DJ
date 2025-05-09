@@ -100,14 +100,28 @@ class Controller:
         self.client = None
         self.ai_api_key = ""
 
-        self.ai_system_prompt = ""
-        self.ai_few_shot = ""
-        
-        self.ai_temperature = 0.7
-        self.ai_max_tokens = 80
-        self.ai_top_p = 0.9
-        self.ai_frequency_penalty = 0.3
-        self.ai_presence_penalty = 0.5
+        # Current profile
+        self.gpt_profile = None
+
+        # All profiles
+        self.default_gpt_profile = {
+            "name": "",
+            "system_prompt": "",
+            "assistant_prompt": "",
+            "temperature": 0.7,
+            "max_tokens": 80,
+            "top_p": 0.9,
+            "frequency_penalty": 0.3,
+            "presence_penalty": 0.5,
+        }
+
+        self.gpt_profiles = []
+
+    def get_current_gpt_profile(self):
+        if self.gpt_profile is None:
+            return self.default_gpt_profile
+        return self.gpt_profiles[self.gpt_profile]
+
 
     # --------------   Event Handlers   ------------
 
@@ -286,6 +300,8 @@ class Controller:
         self.listen_enabled_tts = db.get("listen_enabled_tts", False)
         self._tts_rate = db.get("tts_rate", 160)
         self.binds = db.get("binds", {})
+        self.gpt_profile = db.get("gpt_profile", None)
+        self.gpt_profiles = db.get("gpt_profiles", [])
 
         self.ai_api_key = db.get("ai_api_key", "")
 
@@ -306,6 +322,8 @@ class Controller:
             "binds": self.binds,
             "tts_rate": self._tts_rate,
             "ai_api_key": self.ai_api_key,
+            "gpt_profile": self.gpt_profile,
+            "gpt_profiles": self.gpt_profiles,
 
             # Non-controller settings
             "tts_volume": self._tts.tts_volume,
@@ -333,19 +351,19 @@ class Controller:
     
     def ai(self, user_text):
         messages = [
-            {"role": "system",    "content": self.ai_system_prompt},
-            {"role": "assistant", "content": self.ai_few_shot},
+            {"role": "system",    "content": self.get_current_gpt_profile()["system_prompt"]},
+            {"role": "assistant", "content": self.get_current_gpt_profile()["assistant_prompt"]},
             {"role": "user",      "content": user_text},
         ]
         resp = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             # Decoding & Sampling Parameters:
-            temperature=self.ai_temperature,                 # Controls randomness: 0.0 (deterministic) → 1.0 (max diversity/slang)
-            max_tokens=self.ai_max_tokens,                   # Maximum number of tokens to generate in the paraphrase
-            top_p=self.ai_top_p,                             # Nucleus sampling: consider tokens comprising the top X% cumulative probability
-            presence_penalty=self.ai_frequency_penalty,      # Penalizes reusing tokens from the prompt, encouraging new slang/phrases
-            frequency_penalty=self.ai_presence_penalty,      # Penalizes repeated tokens in the output for more varied language
+            temperature=self.get_current_gpt_profile()["temperature"],
+            max_tokens=self.get_current_gpt_profile()["max_tokens"],
+            top_p=self.get_current_gpt_profile()["top_p"],
+            frequency_penalty=self.get_current_gpt_profile()["frequency_penalty"],
+            presence_penalty=self.get_current_gpt_profile()["presence_penalty"],
         )
         return resp.choices[0].message.content.strip()
     
