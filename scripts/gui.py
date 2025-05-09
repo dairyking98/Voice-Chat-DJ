@@ -20,7 +20,7 @@ class MainWindow(tk.Tk):
         super().__init__()
         self.controller = controller
         self.title("VCDJ")
-        self.geometry("1300x800")
+        self.geometry("1300x790")
 
         # TK Inputs
         self.bind_menu = None # Bind menu
@@ -306,6 +306,8 @@ class MainWindow(tk.Tk):
 
     def _create_device_selection_frame(self):
 
+        spacing = 7
+
         # Add labelframe using grid (not pack)
         frame = ttk.Frame(self.topFrame, padding=5)
         frame.pack(side=tk.LEFT, anchor='n') 
@@ -313,10 +315,12 @@ class MainWindow(tk.Tk):
         labelframe = ttk.Labelframe(frame, text="Audio Devices", padding=5)
         labelframe.pack(side=tk.LEFT, anchor='n') 
 
-        spacing = 7
+        subframe = ttk.Frame(labelframe, height=250, width=300)
+        subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
+        subframe.pack_propagate(False)
 
         # Content inside labelframe
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X, pady=(spacing, spacing))
         simpleSubframeDiv.pack_propagate(False)
 
@@ -340,7 +344,7 @@ class MainWindow(tk.Tk):
                 break
 
         # ------ SPEAK (LISTEN) OUT ------
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X, pady=(spacing, spacing))
         simpleSubframeDiv.pack_propagate(False)  # Prevent frame from resizing to fit contents
         p = self.controller.p
@@ -361,7 +365,7 @@ class MainWindow(tk.Tk):
                 self.output_device_cb.current(idx)  # Set combobox selection
                 break
 
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X,pady=(spacing, spacing))
         simpleSubframeDiv.pack_propagate(False)  # Prevent frame from resizing to fit contents
 
@@ -380,7 +384,7 @@ class MainWindow(tk.Tk):
         ttk.Button(simpleSubframeDiv, text="All", width=6, command=lambda: self._set_all_listen_modes(True)).pack(side=tk.LEFT, padx=4)
         ttk.Button(simpleSubframeDiv, text="None", width=6, command=lambda: self._set_all_listen_modes(False)).pack(side=tk.LEFT, padx=4)
 
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
         simpleSubframeDiv.pack_propagate(False)
 
@@ -411,8 +415,12 @@ class MainWindow(tk.Tk):
         labelframe = ttk.Labelframe(frame, text="Volume", padding=5)
         labelframe.pack(side=tk.LEFT, anchor='n')
 
+        subframe = ttk.Frame(labelframe, height=250, width=300)
+        subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
+        subframe.pack_propagate(False)
+
         # Content inside labelframe
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
         simpleSubframeDiv.pack_propagate(False)
 
@@ -425,7 +433,7 @@ class MainWindow(tk.Tk):
         self.music_volume_label = ttk.Label(simpleSubframeDiv, text=str(self.controller.music_volume))
         self.music_volume_label.pack(side=tk.LEFT, padx=5)
 
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
         simpleSubframeDiv.pack_propagate(False)
 
@@ -437,7 +445,7 @@ class MainWindow(tk.Tk):
         self.mic_volume_label = ttk.Label(simpleSubframeDiv, text=str(self.controller.mic_volume))
         self.mic_volume_label.pack(side=tk.LEFT, padx=5)
 
-        simpleSubframeDiv = ttk.Frame(labelframe, height=50, width=300)
+        simpleSubframeDiv = ttk.Frame(subframe, height=50, width=300)
         simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5))
         simpleSubframeDiv.pack_propagate(False)
 
@@ -451,7 +459,7 @@ class MainWindow(tk.Tk):
 
     
     def _create_tts_frame(self):
-        frame = ttk.Frame(self.bottomFrame, padding=5)
+        frame = ttk.Frame(self.topFrame, padding=5)
         frame.pack(side=tk.LEFT, anchor='n')
 
         # Add labelframe using grid (not pack)
@@ -460,23 +468,24 @@ class MainWindow(tk.Tk):
 
 
         # Content inside labelframe
-        simpleSubframeDiv = ttk.Frame(labelframe, height=150, width=600)
-        simpleSubframeDiv.pack(fill=tk.X, pady=(0, 5), anchor='n')
-        simpleSubframeDiv.pack_propagate(False)
+        subframe = ttk.Frame(labelframe, height=250, width=600)
+        subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
+        subframe.pack_propagate(False)
 
-        leftSubFrameDiv = ttk.Frame(simpleSubframeDiv, height=150, width=300)
+
+        leftSubFrameDiv = ttk.Frame(subframe, height=250, width=300)
         leftSubFrameDiv.pack(side=tk.LEFT, padx=5, pady=5, anchor='n')
         leftSubFrameDiv.pack_propagate(False)
 
         # add textbox textarea
-        self.tts_text = tk.Text(leftSubFrameDiv, height=8, width=30, wrap=tk.WORD)
-        self.tts_text.pack(side=tk.LEFT, padx=5, pady=5, anchor='n')
+        self.tts_text = tk.Text(leftSubFrameDiv, width=30, wrap=tk.WORD)
+        self.tts_text.pack(side=tk.LEFT, padx=5, pady=5, anchor='n', fill="both", expand=True)
 
-        rightSubFrameDiv = ttk.Frame(simpleSubframeDiv, height=150, width=300)
+        rightSubFrameDiv = ttk.Frame(subframe, height=250, width=300)
         rightSubFrameDiv.pack(side=tk.RIGHT, padx=5, pady=5, anchor='n')
         rightSubFrameDiv.pack_propagate(False)
 
-        rightTop = ttk.Frame(rightSubFrameDiv, height=40, width=600)
+        rightTop = ttk.Frame(rightSubFrameDiv, height=40, width=300)
         rightTop.pack(side=tk.TOP, pady=(0, 5), anchor='n')
         rightTop.pack_propagate(False)
 
@@ -485,7 +494,7 @@ class MainWindow(tk.Tk):
         ttk.Button(rightTop, text="Clear TTS", command=self._clear_tts).pack(side=tk.LEFT, padx=10)
         ttk.Button(rightTop, text="Save TTS", command=self._save_tts).pack(side=tk.LEFT, padx=10)
 
-        rightMiddle = ttk.Frame(rightSubFrameDiv, height=40, width=600)
+        rightMiddle = ttk.Frame(rightSubFrameDiv, height=40, width=300)
         rightMiddle.pack(side=tk.TOP, pady=(0, 5), anchor='n')
         rightMiddle.pack_propagate(False)
 
@@ -498,7 +507,7 @@ class MainWindow(tk.Tk):
         self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
         self.tts_voice_cb.current(0)
 
-        rightBottom = ttk.Frame(rightSubFrameDiv, height=40, width=600)
+        rightBottom = ttk.Frame(rightSubFrameDiv, height=40, width=300)
         rightBottom.pack(side=tk.TOP, pady=(0, 5), anchor='n')
         rightBottom.pack_propagate(False)
 
@@ -511,13 +520,17 @@ class MainWindow(tk.Tk):
         self.tts_rate_label = ttk.Label(rightBottom, text=str(self.controller._tts_rate)).pack(side=tk.LEFT, padx=5)
 
     def _create_media_playback_frame(self):
-        frame = ttk.Frame(self.bottomFrame, padding=10)
+        frame = ttk.Frame(self.bottomFrame, padding=5)
         frame.pack(side=tk.LEFT, anchor='n')
 
         labelframe = ttk.Labelframe(frame, text="Music Library", padding=10, width=200)
         labelframe.pack(side=tk.LEFT, anchor='n')
 
-        topFrame = ttk.Frame(labelframe, height=50, width=600)
+        subframe = ttk.Frame(labelframe, height=400, width=1237.5)
+        subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
+        subframe.pack_propagate(False)
+
+        topFrame = ttk.Frame(subframe, height=50, width=1240)
         topFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
         topFrame.pack_propagate(False)
 
@@ -529,16 +542,12 @@ class MainWindow(tk.Tk):
             topFrame, text="Stop", command=self._stop_music
         ).pack(side=tk.LEFT)
 
-        middleFrame = ttk.Frame(labelframe, height=50, width=600)
-        middleFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
-        middleFrame.pack_propagate(False)
+        ttk.Label(topFrame, text="Youtube URL:").pack(side=tk.LEFT, padx=20)
+        self.youtube_url = tk.Entry(topFrame, width=50)
+        self.youtube_url.pack(side=tk.LEFT)
+        ttk.Button(topFrame, text="Download", command=self.play_youtube_url).pack(side=tk.LEFT, padx=10)
 
-        ttk.Label(middleFrame, text="Youtube URL:").pack(side=tk.LEFT)
-        self.youtube_url = tk.Entry(middleFrame, width=50)
-        self.youtube_url.pack(side=tk.LEFT, padx=5)
-        ttk.Button(middleFrame, text="Download", command=self.play_youtube_url).pack(side=tk.LEFT, padx=5)
-
-        bottomFrame = ttk.Frame(labelframe, height=200, width=600)
+        bottomFrame = ttk.Frame(subframe, height=300, width=600)
         bottomFrame.pack(fill=tk.BOTH, expand=True, pady=(0, 5), anchor='n')
         bottomFrame.pack_propagate(False)
 
