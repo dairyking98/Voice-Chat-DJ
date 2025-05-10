@@ -21,7 +21,7 @@ class TTS():
         self.tts_voice_name = next((v.name for v in self.voicelist if v.id == self.tts_voice_id), '')
         self.tts_volume = int(self.engine.getProperty('volume') * 100)
 
-    def play_tts(self, text, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, ttsRate=160, voiceMode="SAPI5"):
+    def play_tts(self, text, pyaudio_instance, sel_out_dev, sel_listen_dev, listen_enabled, ttsRate=160, voiceMode="SAPI5", voice="sage"):
         """
         1) Save raw TTS to WAV
         2) Resample to stereo 48 kHz
@@ -39,7 +39,7 @@ class TTS():
             if voiceMode == "OpenAI":
                 response = self.controller.client.audio.speech.create(
                     model="tts-1",
-                    voice="sage", # sage
+                    voice=voice,
                     input=text,
                     response_format="wav",
                 )
