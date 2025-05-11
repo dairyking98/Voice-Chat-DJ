@@ -107,12 +107,12 @@ class Controller:
         self.default_gpt_profile = {
             "name": "",
             "system_prompt": "",
-            "assistant_prompt": "",
             "temperature": 0.7,
             "max_tokens": 80,
             "top_p": 0.9,
             "frequency_penalty": 0.3,
             "presence_penalty": 0.5,
+            "fewshots": []
         }
 
         self.gpt_profiles = []
@@ -350,11 +350,17 @@ class Controller:
         self.client = OpenAI(api_key=self.ai_api_key)
     
     def ai(self, user_text):
+        fewshots = self.get_current_gpt_profile()["fewshots"]
         messages = [
             {"role": "system",    "content": self.get_current_gpt_profile()["system_prompt"]},
-            {"role": "assistant", "content": self.get_current_gpt_profile()["assistant_prompt"]},
             {"role": "user",      "content": user_text},
         ]
+
+        # Insert fewshot prompts
+        for fewshot in reversed(fewshots):
+            messages.insert(1, {"role": "user", "content": fewshot["input"]})
+            messages.insert(2, {"role": "assistant", "content": fewshot["output"]})
+
         resp = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
