@@ -128,6 +128,7 @@ class MainWindow(tk.Tk):
             submenu = tk.Menu(gpt_menu, tearoff=False)
             submenu.add_command(label="Set", command=lambda i=idx: self.set_gpt_profile(i))
             submenu.add_command(label="Edit", command=lambda i=idx: self.create_gpt_profile("edit", i))
+            submenu.add_command(label="Duplicate", command=lambda i=idx: self._duplicate_gpt_profile(idx))
             submenu.add_command(label="Delete", command=lambda i=idx: self.delete_gpt_profile(i))
             gpt_menu.add_cascade(label=label, menu=submenu)
 
@@ -886,6 +887,14 @@ class MainWindow(tk.Tk):
         # Close the popup
         self.gpt_popup.destroy()
         self.gpt_popup = None
+
+        self.controller.push_settings()  # Save current settings to db
+
+
+    def _duplicate_gpt_profile(self, selected_profile):  
+        self.controller.gpt_profiles.append(self.controller.gpt_profiles[selected_profile].copy())
+        # Update menu GUI
+        self._create_menu()
 
         self.controller.push_settings()  # Save current settings to db
 
