@@ -185,6 +185,10 @@ class Playback():
             self.stop_mic_flag.set()
 
     def kill_mic(self):
+        if not self.mic_thread: return
+        if not self.mic_thread.is_alive():
+            self.mic_thread = None
+            return
         self._kill_flag.set()
         self.mic_thread.join(timeout=1)
         self.mic_thread = None

@@ -433,24 +433,22 @@ class MainWindow(tk.Tk):
         simpleSubframeDiv.pack_propagate(False)
 
         ttk.Label(simpleSubframeDiv, text="Mic Mode").pack(fill=tk.X)
-        modeToId = {
-            "Off": 0,
-            "On": 1,
-            "Push to Talk": 2
-        }
-        self.mic_mode_cb = ttk.Combobox(simpleSubframeDiv, values=["Off", "On", "Push to Talk"], state="readonly", width=20)
-        self.mic_mode_cb.current(modeToId[self.controller.mic_mode])  # Set combobox selection
+        
+        self.mic_mode_cb = ttk.Combobox(simpleSubframeDiv, values=self.controller.mic_modes, state="readonly", width=20)
+        self.mic_mode_cb.current(self.controller.mic_modes.index(self.controller.mic_mode))  # Set combobox selection
         self.mic_mode_cb.pack(side=tk.LEFT)
-        self.mic_mode_cb.bind('<<ComboboxSelected>>', lambda e: self.controller.set_mic_mode(self.mic_mode_cb.get()))
+        self.mic_mode_cb.bind('<<ComboboxSelected>>', lambda e: self.set_mic_mode())
 
         # Set current mic mode
-        self.controller.set_mic_mode(self.mic_mode_cb.get())
+        self.set_mic_mode()
 
         # Select current mic mode in the combobox
         for idx, val in enumerate(["Off", "On", "Push to Talk"]):
             if val == self.controller.mic_mode:
                 self.mic_mode_cb.current(idx)
                 break
+
+    
 
     def _create_volume_frame(self):
         frame = ttk.Frame(self.topFrame, padding=5)
@@ -692,6 +690,17 @@ class MainWindow(tk.Tk):
         self.controller._tts.tts_voice_id = voice.id
         self.controller._tts.tts_voice_name = str(voice.name)
         self.controller._tts.update_tts_voice()
+
+    def set_mic_mode(self):
+        mode = self.mic_mode_cb.get()
+        self.controller.mic_mode = mode
+
+        if mode == "Off" or mode == "Push to Talk":
+            self.controller.mic_up()
+        elif mode == "On":
+            self.controller.mic_down()
+
+        self.controller.push_settings()  # Save current settings to db
 
 
     def _on_output_device_change(self, event):

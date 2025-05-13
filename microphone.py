@@ -90,6 +90,8 @@ class Controller:
         self.listen_enabled_music = False # Listen mode for music playback
         self.listen_enabled_tts = False # Listen mode for TTS playback
 
+        # Mic passthrough state
+        self.mic_modes = ["Off", "On", "Push to Talk"] # Mic modes
         self.mic_mode = "Push to Talk" # Mic mode
 
 
@@ -226,14 +228,7 @@ class Controller:
         listener = pymouse.Listener(on_click=on_click)
         listener.start()
 
-    def set_mic_mode(self, mode):
-        self.mic_mode = mode
-        if mode == "Off" or mode == "Push to Talk":
-            self.mic_up()
-        elif mode == "On":
-            self.mic_down()
-
-        self.push_settings()  # Save current settings to db
+    
 
     # --------------   UI Helpers   ------------
 
