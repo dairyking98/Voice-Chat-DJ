@@ -441,13 +441,6 @@ class MainWindow(tk.Tk):
 
         # Set current mic mode
         self.set_mic_mode()
-
-        # Select current mic mode in the combobox
-        for idx, val in enumerate(["Off", "On", "Push to Talk"]):
-            if val == self.controller.mic_mode:
-                self.mic_mode_cb.current(idx)
-                break
-
     
 
     def _create_volume_frame(self):
@@ -858,8 +851,6 @@ class MainWindow(tk.Tk):
             input_text = input_entry.get().strip()
             output_text = output_entry.get().strip()
 
-            print(input_text, output_text)
-
             fewshots.append({
                 "input": input_text,
                 "output": output_text
@@ -948,11 +939,14 @@ class MainWindow(tk.Tk):
         self.controller.listen_enabled_mic = self.listen_mic.get()
         self.controller.listen_enabled_music = self.listen_music.get()
         self.controller.listen_enabled_tts = self.listen_tts.get()
-        self.controller.push_settings()  # Save current settings to db
 
         # Restart mic thread to reset settings that only occur before the thread starts
         self.controller._playback.kill_mic()
-        self.controller.mic_down()
+        self.controller.mic_up()
+        if self.controller.mic_mode == "On":
+            self.controller.mic_down()
+
+        self.controller.push_settings()  # Save current settings to db
 
     def play_youtube_url(self):
         url = self.youtube_url.get().strip()
