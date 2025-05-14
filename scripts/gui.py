@@ -50,7 +50,7 @@ class MainWindow(tk.Tk):
         self.tts_rate_label = None # TTS rate label for main window
 
         self.tts_mode_cb = None # TTS mode combobox
-        self.tts_voice_cb = None # TTS voice combobox
+        self.tts_ai_voice_cb = None # TTS voice combobox
 
         self.music_volume_label = None # Music volume label
         self.mic_volume_label = None # Mic volume label
@@ -723,10 +723,10 @@ class MainWindow(tk.Tk):
         self.tts_voice_mode_cb.pack(side=tk.RIGHT, padx=5)
         self.tts_voice_mode_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_mode_change)
 
-        self.tts_voice_cb = ttk.Combobox(self.tts_popup, values=self._tts_voices, state="readonly", width=20)
-        self.tts_voice_cb.current(self._tts_voices.index(self._tts_voice))
-        self.tts_voice_cb.pack(side=tk.RIGHT, padx=5)
-        self.tts_voice_cb.bind('<<ComboboxSelected>>', self._on_tts_voice_change)
+        self.tts_ai_voice_cb = ttk.Combobox(self.tts_popup, values=self._tts_voices, state="readonly", width=20)
+        self.tts_ai_voice_cb.current(self._tts_voices.index(self._tts_voice))
+        self.tts_ai_voice_cb.pack(side=tk.RIGHT, padx=5)
+        self.tts_ai_voice_cb.bind('<<ComboboxSelected>>', self._on_ai_tts_voice_change)
 
         rate_frame = ttk.Frame(self.tts_popup)
         rate_frame.pack(pady=10)
@@ -871,8 +871,8 @@ class MainWindow(tk.Tk):
     def _on_tts_voice_mode_change(self, event):
         self._tts_voice_mode = self.tts_voice_mode_cb.get()
 
-    def _on_tts_voice_change(self, event):
-        self._tts_voice = self.tts_voice_cb.get()
+    def _on_ai_tts_voice_change(self, event):
+        self._tts_voice = self.tts_ai_voice_cb.get()
 
     # -------
 
