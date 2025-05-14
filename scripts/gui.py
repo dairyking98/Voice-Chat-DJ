@@ -88,6 +88,10 @@ class MainWindow(tk.Tk):
         # Audio playback states
         self.music_list = None # Music listbox
 
+        # Audio effects
+        self.audio_effects_pitch_label = None # Pitch label
+        self.audio_effects_pitch_slider = None
+
         # Toolbar
         self._create_menu()
 
@@ -653,7 +657,8 @@ class MainWindow(tk.Tk):
 
     def audio_effects_pitch_changed(self, value):
         self.controller.pitch_transform_semitones = round(float(value), 2)
-        self.audio_effects_pitch_label.config(text=str(self.controller.pitch_transform_semitones))
+        if self.audio_effects_pitch_label is not None and self.audio_effects_pitch_label.winfo_exists():
+            self.audio_effects_pitch_label.config(text=str(self.controller.pitch_transform_semitones))
 
     def open_popup(self):
         # If tts window is already open, bring it to the front and focus
