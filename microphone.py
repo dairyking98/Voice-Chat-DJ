@@ -100,6 +100,10 @@ class Controller:
         self.reverb_transform_enabled = False
         self.robot_transform_enabled = False
 
+        self.mic_transform_enabled = False
+        self.music_transform_enabled = False
+        self.tts_transform_enabled = False
+
         # Binds config
         self.binds = {}
 

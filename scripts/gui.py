@@ -620,18 +620,32 @@ class MainWindow(tk.Tk):
         subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
         subframe.pack_propagate(False)
 
+
         topFrame = ttk.Frame(subframe, height=50, width=840)
         topFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
         topFrame.pack_propagate(False)
+
+        self.mic_transform_enabled = tk.BooleanVar(value=self.controller.mic_transform_enabled)
+        self.music_transform_enabled = tk.BooleanVar(value=self.controller.music_transform_enabled)
+        self.tts_transform_enabled = tk.BooleanVar(value=self.controller.tts_transform_enabled)
+
+        ttk.Checkbutton(topFrame, text="Mic", variable=self.mic_transform_enabled, command=self.on_transform_device_change).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Checkbutton(topFrame, text="Music", variable=self.music_transform_enabled, command=self.on_transform_device_change).pack(side=tk.LEFT, padx=2)
+        ttk.Checkbutton(topFrame, text="TTS", variable=self.tts_transform_enabled, command=self.on_transform_device_change).pack(side=tk.LEFT, padx=2)
+
+
+        middleFrame = ttk.Frame(subframe, height=50, width=840)
+        middleFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        middleFrame.pack_propagate(False)
 
 
         self.pitch_transform_enabled = tk.BooleanVar(value=self.controller.pitch_transform_enabled)
         self.reverb_transform_enabled = tk.BooleanVar(value=self.controller.reverb_transform_enabled)
         self.robot_transform_enabled = tk.BooleanVar(value=self.controller.robot_transform_enabled)
 
-        ttk.Checkbutton(topFrame, text="Pitch", variable=self.pitch_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=(0, 2))
-        ttk.Checkbutton(topFrame, text="Reverb", variable=self.reverb_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=2)
-        ttk.Checkbutton(topFrame, text="Roobot", variable=self.robot_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=2)
+        ttk.Checkbutton(middleFrame, text="Pitch", variable=self.pitch_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Checkbutton(middleFrame, text="Reverb", variable=self.reverb_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=2)
+        ttk.Checkbutton(middleFrame, text="Roobot", variable=self.robot_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=2)
 
         bottomFrame = ttk.Frame(subframe, height=300, width=600)
         bottomFrame.pack(fill=tk.BOTH, expand=True, pady=(0, 5), anchor='n')
@@ -642,6 +656,12 @@ class MainWindow(tk.Tk):
         self.audio_effects_pitch_slider.set(self.controller.pitch_transform_semitones)
         self.audio_effects_pitch_label = ttk.Label(bottomFrame, text=str(self.controller.pitch_transform_semitones), width=20)
         self.audio_effects_pitch_label.pack(side=tk.LEFT, padx=5)
+
+    def on_transform_device_change(self):
+        # Update the transform state based on the checkboxes
+        self.controller.mic_transform_enabled = self.mic_transform_enabled.get()
+        self.controller.music_transform_enabled = self.music_transform_enabled.get()
+        self.controller.tts_transform_enabled = self.tts_transform_enabled.get()
 
     def on_transform_change(self):
         # Update the transform state based on the checkboxes

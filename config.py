@@ -7,7 +7,7 @@ import pyaudio
 MIC_RATE      = 48000      # 48 kHz for mic passthrough
 MIC_CHANNELS  = 1          # capture mic as mono
 MIC_CHUNK     = 8192
-MUSIC_CHUNK   = 1024
+MUSIC_CHUNK   = 8192
 FORMAT        = pyaudio.paInt16
 
 # ——— DEBUG ———

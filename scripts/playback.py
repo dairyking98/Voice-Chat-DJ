@@ -109,6 +109,16 @@ class Playback():
                 time.sleep(0.1)
                 data = reader(MUSIC_CHUNK)
                 continue
+            
+            if self.controller.music_transform_enabled:
+                # Audio transformations
+                if self.controller.pitch_transform_enabled:
+                    # Pitch shift up by 2 semitones
+                    data = self.transformAudio(data, "pitch", self.controller.pitch_transform_semitones, "music", rate)  
+                if self.controller.reverb_transform_enabled:
+                    data = self.transformAudio(data, "reverb", None, "music", rate)
+                if self.controller.robot_transform_enabled:
+                    data = self.transformAudio(data, "robot", None, "music", rate)
 
             chunk = convert_channels(data, 1, 1)
             stream.write(adjust_volume(chunk, self.controller.music_volume))
@@ -191,12 +201,12 @@ class Playback():
         return lfilter(b, a, data)
 
     # ------------- Audio Transformation -------------
-    def transformAudio(self, data, transform_type, semitones=0):
+    def transformAudio(self, data, transform_type, semitones=0, type='mic', rate=MIC_RATE):
         if transform_type == "pitch":
             try:
                 audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-                audio = librosa.util.fix_length(audio, size=MIC_CHUNK)
-                pitched = librosa.effects.pitch_shift(audio, sr=MIC_RATE, n_steps=semitones)
+                audio = librosa.util.fix_length(audio, size=MIC_CHUNK if type == 'mic' else MUSIC_CHUNK*2)
+                pitched = librosa.effects.pitch_shift(audio, sr=rate, n_steps=semitones)
                 pitched = np.clip(pitched * 32768.0, -32768, 32767).astype(np.int16)
                 data = pitched.tobytes()
                 return data
@@ -206,7 +216,7 @@ class Playback():
         elif transform_type == "robot":
             try:
                 audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-                vocoded = self.vocode(audio, MIC_RATE)
+                vocoded = self.vocode(audio, rate)
                 vocoded = np.clip(vocoded * 32768.0, -32768, 32767).astype(np.int16)
                 data = vocoded.tobytes()
                 return data
@@ -262,14 +272,15 @@ class Playback():
             while not self._kill_flag.is_set():
                 data = in_s.read(MIC_CHUNK, exception_on_overflow=False)
 
-                # Audio transformations
-                if self.controller.pitch_transform_enabled:
-                    # Pitch shift up by 2 semitones
-                    data = self.transformAudio(data, "pitch", self.controller.pitch_transform_semitones)  
-                if self.controller.reverb_transform_enabled:
-                    data = self.transformAudio(data, "reverb")
-                if self.controller.robot_transform_enabled:
-                    data = self.transformAudio(data, "robot")
+                if self.controller.mic_transform_enabled:
+                    # Audio transformations
+                    if self.controller.pitch_transform_enabled:
+                        # Pitch shift up by 2 semitones
+                        data = self.transformAudio(data, "pitch", self.controller.pitch_transform_semitones, "mic", MIC_RATE)  
+                    if self.controller.reverb_transform_enabled:
+                        data = self.transformAudio(data, "reverb", None, "mic", MIC_RATE)
+                    if self.controller.robot_transform_enabled:
+                        data = self.transformAudio(data, "robot", None, "mic", MIC_RATE)
 
                 data = convert_channels(data, MIC_CHANNELS, out_ch)
                 data = adjust_volume(data, 0 if self.stop_mic_flag.is_set() else self.controller.mic_volume)

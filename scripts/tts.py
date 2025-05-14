@@ -79,6 +79,17 @@ class TTS():
                 )
             data = reader(MUSIC_CHUNK)
             while data:
+                
+                if self.controller.tts_transform_enabled:
+                    # Audio transformations
+                    if self.controller.pitch_transform_enabled:
+                        # Pitch shift up by 2 semitones
+                        data = self.controller._playback.transformAudio(data, "pitch", self.controller.pitch_transform_semitones, "music", rate)  
+                    if self.controller.reverb_transform_enabled:
+                        data = self.controller._playback.transformAudio(data, "reverb", None, "music", rate)
+                    if self.controller.robot_transform_enabled:
+                        data = self.controller._playback.transformAudio(data, "robot", None, "music", rate)
+
                 chunk = adjust_volume(convert_channels(data, in_ch, in_ch), self.tts_volume)
                 stream.write(chunk)
                 if spk:
