@@ -102,7 +102,9 @@ class MainWindow(tk.Tk):
         self._create_device_selection_frame()
         self._create_volume_frame()
         self._create_tts_frame()
+
         self._create_media_playback_frame()
+        self._create_audio_effects_frame()
 
         self.sync_binds()
 
@@ -571,11 +573,11 @@ class MainWindow(tk.Tk):
         labelframe = ttk.Labelframe(frame, text="Music Library", padding=10, width=200)
         labelframe.pack(side=tk.LEFT, anchor='n')
 
-        subframe = ttk.Frame(labelframe, height=400, width=1237.5)
+        subframe = ttk.Frame(labelframe, height=400, width=837.5)
         subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
         subframe.pack_propagate(False)
 
-        topFrame = ttk.Frame(subframe, height=50, width=1240)
+        topFrame = ttk.Frame(subframe, height=50, width=840)
         topFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
         topFrame.pack_propagate(False)
 
@@ -602,7 +604,56 @@ class MainWindow(tk.Tk):
         self.music_list.bind('<Double-Button-1>', lambda e: self.play_selected_song(False))
 
         self._refresh_music() # Load music list on startup
-        
+
+    def _create_audio_effects_frame(self):
+        frame = ttk.Frame(self.bottomFrame, padding=5)
+        frame.pack(side=tk.RIGHT, anchor='n')
+
+        labelframe = ttk.Labelframe(frame, text="Audio Effects", padding=10, width=200)
+        labelframe.pack(side=tk.LEFT, anchor='n')
+
+        subframe = ttk.Frame(labelframe, height=400, width=400)
+        subframe.pack(fill=tk.X, pady=(0, 5), anchor='n')
+        subframe.pack_propagate(False)
+
+        topFrame = ttk.Frame(subframe, height=50, width=840)
+        topFrame.pack(side=tk.TOP, pady=(0, 5), anchor='n')
+        topFrame.pack_propagate(False)
+
+
+        self.pitch_transform_enabled = tk.BooleanVar(value=self.controller.pitch_transform_enabled)
+        self.reverb_transform_enabled = tk.BooleanVar(value=self.controller.reverb_transform_enabled)
+        self.robot_transform_enabled = tk.BooleanVar(value=self.controller.robot_transform_enabled)
+
+        ttk.Checkbutton(topFrame, text="Pitch", variable=self.pitch_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Checkbutton(topFrame, text="Reverb", variable=self.reverb_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=2)
+        ttk.Checkbutton(topFrame, text="Roobot", variable=self.robot_transform_enabled, command=self.on_transform_change).pack(side=tk.LEFT, padx=2)
+
+        bottomFrame = ttk.Frame(subframe, height=300, width=600)
+        bottomFrame.pack(fill=tk.BOTH, expand=True, pady=(0, 5), anchor='n')
+        bottomFrame.pack_propagate(False)
+
+        self.audio_effects_pitch_slider = ttk.Scale(bottomFrame, from_=-20, to=20, orient=tk.HORIZONTAL, command=self.audio_effects_pitch_changed, length=250)
+        self.audio_effects_pitch_slider.pack(side=tk.LEFT, padx=5)
+        self.audio_effects_pitch_slider.set(self.controller.pitch_transform_semitones)
+        self.audio_effects_pitch_label = ttk.Label(bottomFrame, text=str(self.controller.pitch_transform_semitones), width=20)
+        self.audio_effects_pitch_label.pack(side=tk.LEFT, padx=5)
+
+    def on_transform_change(self):
+        # Update the transform state based on the checkboxes
+        self.controller.pitch_transform_enabled = self.pitch_transform_enabled.get()
+        self.controller.reverb_transform_enabled = self.reverb_transform_enabled.get()
+        self.controller.robot_transform_enabled = self.robot_transform_enabled.get()
+
+        # Update the audio effects slider state
+        if not self.controller.pitch_transform_enabled:
+            self.audio_effects_pitch_slider.config(state=tk.DISABLED)
+        else:
+            self.audio_effects_pitch_slider.config(state=tk.NORMAL)
+
+    def audio_effects_pitch_changed(self, value):
+        self.controller.pitch_transform_semitones = round(float(value), 2)
+        self.audio_effects_pitch_label.config(text=str(self.controller.pitch_transform_semitones))
 
     def open_popup(self):
         # If tts window is already open, bring it to the front and focus

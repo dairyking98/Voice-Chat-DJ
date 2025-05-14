@@ -94,6 +94,11 @@ class Controller:
         self.mic_modes = ["Off", "On", "Push to Talk"] # Mic modes
         self.mic_mode = "Push to Talk" # Mic mode
 
+        # Audio transform state for mic
+        self.pitch_transform_enabled = False
+        self.pitch_transform_semitones = 0
+        self.reverb_transform_enabled = False
+        self.robot_transform_enabled = False
 
         # Binds config
         self.binds = {}

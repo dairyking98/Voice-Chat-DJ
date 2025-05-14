@@ -9,6 +9,9 @@ import io
 import os
 import wave
 import numpy as np
+import librosa
+import numpy as np
+from scipy.signal import butter, lfilter, hilbert
 
 from config import FORMAT, MUSIC_CHUNK, DEBUG, MIC_CHANNELS, MIC_RATE, MIC_CHUNK
 
@@ -144,11 +147,100 @@ class Playback():
         )
         self._playback_thread.start()
 
+    # ------------- Audio Transformation Variables -------------
+
+    # Robot
+    CARRIER_FREQ = 100
+    NUM_BANDS = 16
+    BAND_EDGES = np.geomspace(80, 5000, NUM_BANDS + 1)
+
+    # Reverb
+    DELAY_MS = 100      # Delay time in milliseconds
+    FEEDBACK = 0.4      # How much delayed signal is fed back
+    MIX = 0.5           # 0 = dry, 1 = fully wet
+    delay_samples = int(MIC_RATE * DELAY_MS / 1000)
+    echo_buffer = np.zeros(delay_samples, dtype=np.float32)
+    echo_pos = 0
+
+    # ------------- Audio Transformation Helpers ------------- 
+    def vocode(self, modulator, fs):
+        t = np.arange(len(modulator)) / fs
+        carrier = 2 * (t * self.CARRIER_FREQ % 1) - 1  # Saw wave
+        output = np.zeros_like(modulator)
+
+        for i in range(self.NUM_BANDS):
+            low, high = self.BAND_EDGES[i], self.BAND_EDGES[i+1]
+
+            mod_band = self.bandpass(modulator, low, high, fs)
+            env = np.abs(hilbert(mod_band))
+            env = np.clip(env * 2.0, 0, 1)  # Boost envelope
+
+            car_band = self.bandpass(carrier, low, high, fs)
+            output += env * car_band
+
+        # Optional: blend in 10–20% dry voice to help intelligibility
+        output = 0.9 * output + 0.1 * modulator
+
+        return output
+    
+    def bandpass(self, data, lowcut, highcut, fs, order=3):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return lfilter(b, a, data)
+
+    # ------------- Audio Transformation -------------
+    def transformAudio(self, data, transform_type, semitones=0):
+        if transform_type == "pitch":
+            try:
+                audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+                audio = librosa.util.fix_length(audio, size=MIC_CHUNK)
+                pitched = librosa.effects.pitch_shift(audio, sr=MIC_RATE, n_steps=semitones)
+                pitched = np.clip(pitched * 32768.0, -32768, 32767).astype(np.int16)
+                data = pitched.tobytes()
+                return data
+            except Exception as e:
+                print(f"pitch shift audio transformation error: {e}")
+                return data
+        elif transform_type == "robot":
+            try:
+                audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+                vocoded = self.vocode(audio, MIC_RATE)
+                vocoded = np.clip(vocoded * 32768.0, -32768, 32767).astype(np.int16)
+                data = vocoded.tobytes()
+                return data
+            except Exception as e:
+                print(f"robot audio transformation error: {e}")
+                return data
+        elif transform_type == "reverb":
+            try:
+                audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+                out = np.zeros_like(audio)
+                for i in range(len(audio)):
+                    delayed = self.echo_buffer[self.echo_pos]
+                    new_sample = audio[i] + delayed * self.FEEDBACK
+                    self.echo_buffer[self.echo_pos] = new_sample
+                    self.echo_pos = (self.echo_pos + 1) % self.delay_samples
+
+                    out[i] = (1 - self.MIX) * audio[i] + self.MIX * delayed
+
+                out = np.clip(out * 32768.0, -32768, 32767).astype(np.int16)
+                data = out.tobytes()
+                return data
+            except Exception as e:
+                print(f"reverb audio transformation error: {e}")
+                return data
+        else:
+            print(f"invalid transform type: {transform_type}")
+            return data
+
     ### MIC PASSTHROUGH ###
     def switch_to_mic(self, p, sel_in_dev, sel_out_dev, sel_listen_dev, listen_mic_enabled, mic_volume):
         self.stop_mic_flag.clear()
         self._kill_flag.clear()
         if self.mic_thread and self.mic_thread.is_alive(): return
+
         def _mic_loop():
             self.stop_mic_flag.clear()
             out_ch=p.get_device_info_by_index(self.controller.output_device)['maxOutputChannels']
@@ -164,14 +256,26 @@ class Playback():
                     out_s2=p.open(format=FORMAT,channels=out_ch,rate=MIC_RATE,
                                 output=True,output_device_index=self.controller.listen_device,
                                 frames_per_buffer=MIC_CHUNK)
-                except: debug("mic-listen fail")
+                except:
+                    print("mic-listen fail")
 
             while not self._kill_flag.is_set():
-                data=in_s.read(MIC_CHUNK,exception_on_overflow=False)
-                data=convert_channels(data,MIC_CHANNELS,out_ch)
-                data=adjust_volume(data,0 if self.stop_mic_flag.is_set() else self.controller.mic_volume)
+                data = in_s.read(MIC_CHUNK, exception_on_overflow=False)
+
+                # Audio transformations
+                if self.controller.pitch_transform_enabled:
+                    # Pitch shift up by 2 semitones
+                    data = self.transformAudio(data, "pitch", self.controller.pitch_transform_semitones)  
+                if self.controller.reverb_transform_enabled:
+                    data = self.transformAudio(data, "reverb")
+                if self.controller.robot_transform_enabled:
+                    data = self.transformAudio(data, "robot")
+
+                data = convert_channels(data, MIC_CHANNELS, out_ch)
+                data = adjust_volume(data, 0 if self.stop_mic_flag.is_set() else self.controller.mic_volume)
                 out_s1.write(data)
-                if out_s2: out_s2.write(data)
+                if out_s2:
+                    out_s2.write(data)
 
             in_s.stop_stream();in_s.close()
             out_s1.stop_stream();out_s1.close()
