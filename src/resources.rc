@@ -1,0 +1,5 @@
+// Windows resource file - embeds icon into EXE
+#include <windows.h>
+
+IDI_APPLICATION ICON "../icon.ico"
+1               ICON "../icon.ico"
